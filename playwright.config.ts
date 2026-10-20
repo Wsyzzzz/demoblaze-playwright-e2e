@@ -1,5 +1,6 @@
 import { defineConfig, devices, type ReporterDescription } from '@playwright/test';
 import { env } from './src/config/env';
+import { HTML_REPORTS_ROOT, reportStamp } from './src/config/reports';
 
 const isCI = !!process.env.CI;
 
@@ -15,16 +16,29 @@ const BROWSER_SUITES = /tests[\\/](ui|security)[\\/].*\.spec\.ts$/;
 if (process.argv.slice(2).some((arg) => /\bperf\b/.test(arg))) process.env.RUN_PERF = '1';
 const runPerf = process.env.RUN_PERF === '1';
 
-const reporters: ReporterDescription[] = [
-  ['list'],
-  ['html', { outputFolder: 'reports/html', open: 'never' }],
-  ['junit', { outputFile: 'reports/junit/results.xml' }],
-  ['json', { outputFile: 'reports/json/results.json' }],
-];
+/**
+ * Local runs keep a report per run (reports/html/test_report_<yyyyMMdd_HHmmss>/, newest
+ * REPORT_HISTORY kept). The stamp goes into the environment so every process of a run agrees on it.
+ */
+process.env.REPORT_STAMP ??= reportStamp(new Date());
+const htmlReportFolder = isCI
+  ? HTML_REPORTS_ROOT
+  : `${HTML_REPORTS_ROOT}/test_report_${process.env.REPORT_STAMP}`;
+
+const reporters: ReporterDescription[] = [['list']];
+// `--list` only prints the tests, so it should not create (or overwrite) any report.
+if (!process.argv.includes('--list')) {
+  reporters.push(
+    ['html', { outputFolder: htmlReportFolder, open: 'never' }],
+    ['junit', { outputFile: 'reports/junit/results.xml' }],
+    ['json', { outputFile: 'reports/json/results.json' }],
+  );
+}
 if (isCI) reporters.push(['github']);
 
 export default defineConfig({
   testDir: './tests',
+  globalSetup: './src/config/global-setup.ts',
   outputDir: 'reports/test-results',
   fullyParallel: true,
   forbidOnly: isCI,
@@ -56,14 +70,14 @@ export default defineConfig({
     {
       name: 'firefox',
       testMatch: BROWSER_SUITES,
-      grepInvert: /@mobile/,
+      grepInvert: /@mobile|@chromium-only/,
       // A Firefox start-up race is handled at its source by the `browser` fixture (src/fixtures).
       use: { ...devices['Desktop Firefox'] },
     },
     {
       name: 'webkit',
       testMatch: BROWSER_SUITES,
-      grepInvert: /@mobile/,
+      grepInvert: /@mobile|@chromium-only/,
       use: { ...devices['Desktop Safari'] },
     },
     {

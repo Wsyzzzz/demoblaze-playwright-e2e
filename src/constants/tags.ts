@@ -9,6 +9,8 @@ export const TAG = {
   SECURITY: '@security',
   PERF: '@perf',
   MOBILE: '@mobile',
+  /** Runs on Chromium only: a site defect that one browser engine is enough to reproduce. */
+  CHROMIUM_ONLY: '@chromium-only',
   /** Test documents an open defect and is expected to fail until it is fixed. */
   KNOWN_DEFECT: '@known-defect',
 } as const;

@@ -7,7 +7,7 @@ The framework runs UI, API, security and performance checks from one code base, 
 |                  |                                                                                                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Test cases**   | 84 documented in [`docs/DemoBlaze_Test_Cases.xlsx`](docs/DemoBlaze_Test_Cases.xlsx)                              |
-| **Automated**    | 61 test cases → 169 test runs in a full run, plus the performance budget run on its own                          |
+| **Automated**    | 61 test cases → 167 test runs in a full run, plus the performance budget run on its own                          |
 | **Traceability** | [`docs/traceability.md`](docs/traceability.md): every case with its spec file, or the reason it is not automated |
 | **Stack**        | Playwright 1.59 · TypeScript 5.9 · Node.js ≥ 20 · ESLint · Prettier · k6 (optional)                              |
 
@@ -25,8 +25,6 @@ The framework runs UI, API, security and performance checks from one code base, 
 8. [CI/CD](#8-cicd)
 9. [Configuration](#9-configuration)
 10. [Known defects](#10-known-defects)
-11. [Conventions for contributors](#11-conventions-for-contributors)
-12. [Roadmap](#12-roadmap)
 
 ---
 
@@ -44,7 +42,7 @@ cp .env.example .env            # optional: defaults work without changes
 
 npm run demo                    # the two demo flows from the brief, in a visible browser
 npm run test:smoke              # critical path: 7 tests (5 UI on Chromium + 2 API)
-npm run report                  # open the HTML report
+npm run report                  # open the HTML report of the latest run
 ```
 
 No credentials are needed. By default each test worker **signs up its own throwaway account** through the API (see [5.4](#54-test-data-isolation-one-account-per-worker)).
@@ -140,6 +138,7 @@ demoblaze-playwright-e2e/
 │
 ├── src/                          # Framework code – no test cases here
 │   ├── config/env.ts             # Typed, validated configuration (environments + overrides)
+│   ├── config/reports.ts         # One HTML report per run; old ones pruned by global-setup.ts
 │   ├── api/DemoblazeApi.ts       # API client: used by API tests and for fast test setup
 │   ├── api/ApiCallLog.ts         # Request/response history for the report (secrets masked)
 │   ├── pages/                    # Page Object Model
@@ -176,8 +175,9 @@ demoblaze-playwright-e2e/
 │
 ├── perf/k6/api-load.js           # Optional load test (k6)
 ├── scripts/ci-summary.mjs        # Writes the GitHub Actions job summary
+├── scripts/open-report.mjs       # npm run report: opens the latest (or a chosen) run's report
 └── docs/
-    ├── DemoBlaze_Test_Cases.xlsx # Test case suite (83 cases) + potential defects
+    ├── DemoBlaze_Test_Cases.xlsx # Test case suite (84 cases) + potential defects
     └── traceability.md           # Test case → spec file mapping
 ```
 
@@ -272,13 +272,14 @@ Assertions are scoped to the test case's objective. For example, the end-to-end 
 | `@regression`                              | Full suite, run nightly                           |
 | `@api` · `@security` · `@perf` · `@mobile` | Test type                                         |
 | `@known-defect`                            | Expected to fail until the linked defect is fixed |
+| `@chromium-only`                           | Left out of the Firefox and WebKit projects       |
 
-| Project                         | Runs                                                                 |
-| ------------------------------- | -------------------------------------------------------------------- |
-| `chromium`, `firefox`, `webkit` | UI and security specs on desktop browsers                            |
-| `mobile-chrome`                 | `@smoke` + `@mobile` specs on an emulated Pixel 7                    |
-| `api`                           | API specs once, with no browser (fast)                               |
-| `perf`                          | Performance budgets on Chromium, without retries; only when selected |
+| Project                         | Runs                                                                          |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `chromium`, `firefox`, `webkit` | UI and security specs on desktop browsers (`@chromium-only` on Chromium only) |
+| `mobile-chrome`                 | `@smoke` + `@mobile` specs on an emulated Pixel 7                             |
+| `api`                           | API specs once, with no browser (fast)                                        |
+| `perf`                          | Performance budgets on Chromium, without retries; only when selected          |
 
 ### 5.10 Configuration
 
@@ -316,11 +317,16 @@ The full per-case decision is in [`docs/traceability.md`](docs/traceability.md) 
 
 ## 7. Reports
 
-Every run writes to `reports/`:
+Every run writes to `reports/`. **The HTML report is kept per run**: each local run gets its own folder named with the date and time it started, for example `reports/html/test_report_20261020_134100/` (year first, so the folders sort by date). The newest 10 are kept (`REPORT_HISTORY`); older ones are deleted at the start of the next run. The other outputs below always hold the latest run. On CI the report goes straight into `reports/html/`, because every build already keeps its own.
+
+```bash
+npm run report                    # open the latest run's report
+npm run report -- 20261020_134100 # open a specific run's report
+```
 
 | Output          | Path                                        | Use                                                                                                                                                    |
 | --------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| HTML report     | `reports/html/index.html`                   | `npm run report`: steps, errors, screenshots, videos, traces                                                                                           |
+| HTML report     | `reports/html/test_report_<date_time>/`     | Steps, errors, screenshots, videos, traces, defect evidence and API logs of that run                                                                   |
 | JUnit XML       | `reports/junit/results.xml`                 | Jenkins / Azure DevOps / test-management import                                                                                                        |
 | JSON            | `reports/json/results.json`                 | Custom dashboards; used for the GitHub job summary                                                                                                     |
 | Artifacts       | `reports/test-results/`                     | Trace, screenshot and video, **kept only for failed tests**                                                                                            |
@@ -371,6 +377,7 @@ All settings have working defaults in `src/config/env.ts`, so **no `.env` file i
 | `VALID_USER` / `VALID_PASSWORD` | —                   | Account for `USER_STRATEGY=env`                                    |
 | `TIMEZONE`                      | `Asia/Kuala_Lumpur` | Browser timezone (used by the order-date check)                    |
 | `CART_PAGE_BUDGET_MS`           | `3000`              | Performance budget for CRT-019 (median of 3 cold loads)            |
+| `REPORT_HISTORY`                | `10`                | How many local HTML reports to keep (one per run)                  |
 
 Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config.ts`. Retries are never used to hide a known problem: a rare Firefox start-up race ([microsoft/playwright#43413](https://github.com/microsoft/playwright/issues/43413)) is fixed at its source by opening and closing one warm-up window per Firefox worker (`browser` fixture in `src/fixtures/index.ts`).
 
@@ -380,45 +387,23 @@ Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config
 
 Found during manual and automated testing, and kept as expected-to-fail automated tests (full list of 28 potential defects in the workbook):
 
-| Defect | Summary                                                                                                                                                                                          | Test             |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
-| PD-01  | Order can be placed with an empty cart ("Amount: 0 USD")                                                                                                                                         | CRT-029          |
-| PD-22  | Guests who open a product page directly all share **one cart** (empty guest id). Found by the first automated run, which saw 121–134 other people's items                                        | CRT-049          |
-| PD-28  | Pressing **OK** on the order confirmation before the site's cart-clear call finishes cancels that call: the bought items **stay in the cart**. Found when CRT-026 failed on Chromium and Firefox | CRT-050          |
-| PD-25  | **No lockout or rate limit:** 10 wrong passwords in a row are all answered with "Wrong password.", so passwords can be brute-forced                                                              | LGN-018          |
-| PD-24  | Double-clicking **Purchase** submits the order twice                                                                                                                                             | CRT-043          |
-| PD-23  | Double-clicking **Log in** sends two login requests                                                                                                                                              | LGN-019          |
-| PD-07  | Password is sent Base64-encoded, which anyone can decode                                                                                                                                         | LGN-029          |
-| PD-09  | Items added as a guest are lost after logging in                                                                                                                                                 | CRT-023          |
-| PD-05  | Spaces-only username and password are sent to the server instead of being blocked                                                                                                                | LGN-011          |
-| PD-10  | Pressing Enter in the password field does not log in                                                                                                                                             | LGN-020          |
-| PD-11  | Login modal keeps typed values after Close                                                                                                                                                       | LGN-021          |
-| PD-26  | Spaces around the username are not trimmed (requirement to confirm)                                                                                                                              | LGN-012          |
-| PD-27  | Username is case-sensitive (requirement to confirm)                                                                                                                                              | LGN-013          |
-| PD-02  | Confirmation date shows the previous month (0-based month)                                                                                                                                       | CRT-027          |
-| PD-08  | Auth cookie `tokenp_` has no Secure/HttpOnly flags                                                                                                                                               | LGN-027          |
-| PD-18  | Auth token is Base64 of username + number, so it is predictable                                                                                                                                  | LGN-026          |
-| PD-19  | API returns HTTP 200 for errors (should be 401/404)                                                                                                                                              | LGN-034, CRT-048 |
-| PD-06  | Guest alert text "Product added" lacks the full stop (annotated, not asserted)                                                                                                                   | CRT-007          |
-
----
-
-## 11. Conventions for contributors
-
-- **Test title** = `<TC ID> <title from the workbook>`, e.g. `CRT-025 Verify a logged-in user can place an order with valid details`.
-- **One objective per test**, with assertions focused on it.
-- **No `waitForTimeout`**: wait for a response, event or web-first assertion.
-- **No credentials in code**: use `.env` (git-ignored) or CI secrets.
-- **Selectors live only in page objects**, never in specs.
-- **Arrange through the API** unless the arrangement itself is under test.
-- Run `npm run lint && npm run typecheck` before pushing; CI enforces both.
-
----
-
-## 12. Roadmap
-
-- Automate the 11 backlog cases, starting with price consistency across pages and the stale order amount.
-- Visual regression snapshots for the cart and confirmation dialog.
-- Allure or a test-management integration (for example Xray/Zephyr) driven by the JUnit output.
-- Sharded runs (`--shard`) once the suite outgrows a single job.
-- Accessibility checks with `@axe-core/playwright`.
+| Defect | Summary                                                                                                                                                                                                                                                            | Test             |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| PD-01  | Order can be placed with an empty cart ("Amount: 0 USD")                                                                                                                                                                                                           | CRT-029          |
+| PD-22  | Guests who open a product page directly all share **one cart** (empty guest id). Found by the first automated run, which saw 121–134 other people's items                                                                                                          | CRT-049          |
+| PD-28  | Pressing **OK** on the order confirmation before the site's cart-clear call finishes cancels that call: the bought items **stay in the cart**. Found when CRT-026 failed on Chromium and Firefox. The bug is in the site's code, so its test runs on Chromium only | CRT-050          |
+| PD-25  | **No lockout or rate limit:** 10 wrong passwords in a row are all answered with "Wrong password.", so passwords can be brute-forced                                                                                                                                | LGN-018          |
+| PD-24  | Double-clicking **Purchase** submits the order twice                                                                                                                                                                                                               | CRT-043          |
+| PD-23  | Double-clicking **Log in** sends two login requests                                                                                                                                                                                                                | LGN-019          |
+| PD-07  | Password is sent Base64-encoded, which anyone can decode                                                                                                                                                                                                           | LGN-029          |
+| PD-09  | Items added as a guest are lost after logging in                                                                                                                                                                                                                   | CRT-023          |
+| PD-05  | Spaces-only username and password are sent to the server instead of being blocked                                                                                                                                                                                  | LGN-011          |
+| PD-10  | Pressing Enter in the password field does not log in                                                                                                                                                                                                               | LGN-020          |
+| PD-11  | Login modal keeps typed values after Close                                                                                                                                                                                                                         | LGN-021          |
+| PD-26  | Spaces around the username are not trimmed (requirement to confirm)                                                                                                                                                                                                | LGN-012          |
+| PD-27  | Username is case-sensitive (requirement to confirm)                                                                                                                                                                                                                | LGN-013          |
+| PD-02  | Confirmation date shows the previous month (0-based month)                                                                                                                                                                                                         | CRT-027          |
+| PD-08  | Auth cookie `tokenp_` has no Secure/HttpOnly flags                                                                                                                                                                                                                 | LGN-027          |
+| PD-18  | Auth token is Base64 of username + number, so it is predictable                                                                                                                                                                                                    | LGN-026          |
+| PD-19  | API returns HTTP 200 for errors (should be 401/404)                                                                                                                                                                                                                | LGN-034, CRT-048 |
+| PD-06  | Guest alert text "Product added" lacks the full stop (annotated, not asserted)                                                                                                                                                                                     | CRT-007          |

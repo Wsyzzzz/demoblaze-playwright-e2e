@@ -103,11 +103,10 @@ test.describe('Place order', { tag: TAG.REGRESSION }, () => {
 
   test(
     'CRT-050 Verify the cart is emptied when the order is confirmed straight away',
-    knownDefectDetails(DEFECT.CART_CLEAR_CANCELLED),
-    async ({ session, api, cartPage, placeOrderModal, orderConfirmation, page, browserName }) => {
-      // The defect is in DemoBlaze's JavaScript, not in a browser, so one engine is enough to
-      // reproduce it on demand. (It also showed up by itself on Chromium and Firefox in CRT-026.)
-      test.skip(browserName !== 'chromium', 'Site defect, reproduced on Chromium only');
+    // The defect is in DemoBlaze's JavaScript, not in a browser, so one engine is enough to
+    // reproduce it on demand (it also showed up by itself on Chromium and Firefox in CRT-026).
+    knownDefectDetails(DEFECT.CART_CLEAR_CANCELLED, [TAG.CHROMIUM_ONLY]),
+    async ({ session, api, cartPage, placeOrderModal, orderConfirmation, page }) => {
       expectKnownDefect(DEFECT.CART_CLEAR_CANCELLED);
       await api.addProducts(session.token, [samsungGalaxyS6.id]);
       await cartPage.open();

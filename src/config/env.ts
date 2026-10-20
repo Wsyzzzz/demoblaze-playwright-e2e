@@ -58,6 +58,8 @@ export const env = {
   userStrategy: readUserStrategy(),
   validUser: process.env.VALID_USER ?? '',
   validPassword: process.env.VALID_PASSWORD ?? '',
+  /** Local runs keep this many HTML reports (one per run) in reports/html/. */
+  reportHistory: readNumber('REPORT_HISTORY', 10),
   perf: {
     cartPageBudgetMs: readNumber('CART_PAGE_BUDGET_MS', 3000),
   },

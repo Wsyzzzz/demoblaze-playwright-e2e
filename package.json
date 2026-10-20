@@ -19,7 +19,7 @@
     "demo": "playwright test --grep \"LGN-004|CRT-025\" --project=chromium --headed --workers=1",
     "demo:edge-cases": "playwright test --grep \"LGN-006|LGN-007|LGN-008|CRT-029|CRT-032\" --project=chromium --headed --workers=1",
     "perf:load": "k6 run perf/k6/api-load.js",
-    "report": "playwright show-report reports/html",
+    "report": "node scripts/open-report.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
