@@ -364,7 +364,7 @@ All settings live in `.env` (copy `.env.example`); environment variables overrid
 | `TIMEZONE`                      | `Asia/Kuala_Lumpur` | Browser timezone (used by the order-date check)                    |
 | `CART_PAGE_BUDGET_MS`           | `3000`              | Performance budget for CRT-019                                     |
 
-Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config.ts`. The Firefox project always allows 1 retry: Firefox occasionally throws an internal error while Playwright closes the browser after a test has passed. A test that needed the retry is reported as **flaky**, never hidden.
+Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config.ts`. Retries are never used to hide a known problem: a rare Firefox start-up race ([microsoft/playwright#43413](https://github.com/microsoft/playwright/issues/43413)) is fixed at its source by opening and closing one warm-up window per Firefox worker (`browser` fixture in `src/fixtures/index.ts`).
 
 ---
 

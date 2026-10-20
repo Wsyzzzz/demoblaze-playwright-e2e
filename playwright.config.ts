@@ -48,10 +48,7 @@ export default defineConfig({
       name: 'firefox',
       testMatch: BROWSER_SUITES,
       grepInvert: /@mobile/,
-      // Firefox occasionally throws an internal error while Playwright closes the browser context
-      // ("_maybeDontRestoreTabs"), after the test's checks have passed. One retry absorbs it; the
-      // report still marks such a test as "flaky", so nothing is hidden.
-      retries: 1,
+      // A Firefox start-up race is handled at its source by the `browser` fixture (src/fixtures).
       use: { ...devices['Desktop Firefox'] },
     },
     {

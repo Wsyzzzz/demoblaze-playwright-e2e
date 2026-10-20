@@ -47,6 +47,27 @@ interface WorkerFixtures {
 }
 
 export const test = base.extend<TestFixtures, WorkerFixtures>({
+  /**
+   * Firefox start-up race (microsoft/playwright#43413, Windows/Linux): the first window a new
+   * Firefox opens can appear before Firefox's session manager is ready. That window is never
+   * registered, so closing it throws "_maybeDontRestoreTabs ... __SSi is undefined".
+   * Open and close one throwaway window per worker first, so no test ever gets that window.
+   * Only the browser-based projects request `browser`, so API tests never launch one.
+   */
+  browser: [
+    async ({ browser, browserName }, use) => {
+      if (browserName === 'firefox') {
+        const warmUp = await browser.newContext();
+        await warmUp.newPage();
+        await warmUp.close().catch((error: Error) => {
+          if (!error.message.includes('__SSi')) throw error;
+        });
+      }
+      await use(browser);
+    },
+    { scope: 'worker' },
+  ],
+
   workerApi: [
     async ({ playwright }, use) => {
       const context = await playwright.request.newContext({ baseURL: env.apiUrl });
