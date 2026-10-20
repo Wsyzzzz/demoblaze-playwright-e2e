@@ -26,7 +26,18 @@ export class HomePage extends BasePage {
       .locator('h5');
   }
 
+  /**
+   * Product images and the carousel can still be loading when the cards appear, shifting the
+   * grid by a few pixels. A click that lands during that shift misses the link, so retry the
+   * click until the product page actually opens.
+   */
   async openProduct(product: Product): Promise<void> {
-    await Promise.all([this.page.waitForURL(/\/prod\.html\?idp_=/), this.productLink(product).click()]);
+    const productUrl = new RegExp(`/prod\\.html\\?idp_=${product.id}(&|$)`);
+    await expect(async () => {
+      if (!productUrl.test(this.page.url())) {
+        await this.productLink(product).click({ timeout: 5_000 });
+      }
+      await this.page.waitForURL(productUrl, { timeout: 5_000 });
+    }).toPass({ timeout: 30_000 });
   }
 }
