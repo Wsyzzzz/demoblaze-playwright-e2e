@@ -7,12 +7,19 @@ export class LoginModal {
   readonly usernameInput: Locator;
   readonly passwordInput: Locator;
   readonly submitButton: Locator;
+  readonly closeButton: Locator;
 
   constructor(private readonly page: Page) {
     this.root = page.locator('#logInModal');
     this.usernameInput = this.root.locator('#loginusername');
     this.passwordInput = this.root.locator('#loginpassword');
     this.submitButton = this.root.getByRole('button', { name: 'Log in' });
+    this.closeButton = this.root.locator('.modal-footer').getByRole('button', { name: 'Close' });
+  }
+
+  async close(): Promise<void> {
+    await this.closeButton.click();
+    await expect(this.root).toBeHidden();
   }
 
   async fill(username: string, password: string): Promise<void> {

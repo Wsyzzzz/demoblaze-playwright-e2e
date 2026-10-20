@@ -29,4 +29,20 @@ test.describe('Session and logout', { tag: TAG.REGRESSION }, () => {
       expect(authCookie?.value ?? '', 'auth cookie should be removed').toBe('');
     },
   );
+
+  test('LGN-031 Verify browser Back after logout does not restore the session', async ({
+    session,
+    homePage,
+    navBar,
+    page,
+  }) => {
+    await homePage.open();
+    await navBar.expectLoggedInAs(session.user.username);
+    await navBar.logOut();
+
+    await page.goBack();
+    await page.reload();
+
+    await navBar.expectLoggedOut();
+  });
 });

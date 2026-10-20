@@ -4,7 +4,7 @@ import { PRODUCTS } from '@data/products';
 import { expect, test } from '@fixtures';
 import { DEFECT, expectKnownDefect, knownDefectDetails } from '@fixtures/known-defect';
 
-const { samsungGalaxyS6, nokiaLumia1520 } = PRODUCTS;
+const { samsungGalaxyS6, nokiaLumia1520, sonyVaioI5 } = PRODUCTS;
 
 test.describe('Add to cart', { tag: TAG.REGRESSION }, () => {
   test(
@@ -63,6 +63,24 @@ test.describe('Add to cart', { tag: TAG.REGRESSION }, () => {
 
     await cartPage.open();
     await cartPage.expectContents([samsungGalaxyS6, nokiaLumia1520]);
+  });
+
+  test('CRT-005 Verify a product from the Laptops category can be added to the cart', async ({
+    session: _session,
+    homePage,
+    productPage,
+    cartPage,
+  }) => {
+    await homePage.open();
+    await homePage.selectCategory('Laptops');
+    await expect(homePage.productLink(samsungGalaxyS6), 'phones are filtered out').toBeHidden();
+
+    await homePage.openProduct(sonyVaioI5);
+    await productPage.expectProduct(sonyVaioI5);
+    expect(await productPage.addToCart()).toBe(ALERT.PRODUCT_ADDED);
+
+    await cartPage.open();
+    await cartPage.expectContents([sonyVaioI5]);
   });
 
   test(

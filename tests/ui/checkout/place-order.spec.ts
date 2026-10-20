@@ -164,4 +164,27 @@ test.describe('Place order', { tag: TAG.REGRESSION }, () => {
       await expect(orderConfirmation.title, 'no confirmation for an empty cart').toBeHidden();
     },
   );
+
+  test(
+    "CRT-043 Verify double-clicking 'Purchase' creates only one order",
+    knownDefectDetails(DEFECT.DOUBLE_SUBMIT_PURCHASE),
+    async ({ session, api, cartPage, placeOrderModal, orderConfirmation, page }) => {
+      expectKnownDefect(DEFECT.DOUBLE_SUBMIT_PURCHASE);
+      // Each order submission empties the cart with POST /deletecart, so count those calls.
+      const submissions: string[] = [];
+      page.on('request', (r) => {
+        if (r.method() === 'POST' && r.url().endsWith('/deletecart')) submissions.push(r.url());
+      });
+      await api.addProducts(session.token, [samsungGalaxyS6.id]);
+      await cartPage.open();
+      await cartPage.expectContents([samsungGalaxyS6]);
+      await cartPage.openPlaceOrder();
+      await placeOrderModal.fill(VALID_CHECKOUT);
+
+      await placeOrderModal.purchaseButton.dblclick();
+      await orderConfirmation.read();
+
+      expect(submissions, 'the order should be submitted exactly once').toHaveLength(1);
+    },
+  );
 });

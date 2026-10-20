@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import type { Product } from '../data/products';
+import type { Category, Product } from '../data/products';
 import { BasePage } from './BasePage';
 
 export class HomePage extends BasePage {
@@ -13,6 +13,14 @@ export class HomePage extends BasePage {
   async open(): Promise<void> {
     await this.page.goto('/');
     await expect(this.productGrid.locator('.card').first()).toBeVisible();
+  }
+
+  /** Filters the grid by category; DemoBlaze reloads the cards through POST /bycat. */
+  async selectCategory(category: Category): Promise<void> {
+    await Promise.all([
+      this.page.waitForResponse((r) => r.url().endsWith('/bycat') && r.ok()),
+      this.page.locator('#itemc', { hasText: category }).click(),
+    ]);
   }
 
   productLink(product: Product): Locator {

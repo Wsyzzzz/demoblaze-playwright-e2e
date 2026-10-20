@@ -7,7 +7,7 @@ The framework runs UI, API, security and performance checks from one code base, 
 |                  |                                                                                                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Test cases**   | 83 documented in [`docs/DemoBlaze_Test_Cases.xlsx`](docs/DemoBlaze_Test_Cases.xlsx)                              |
-| **Automated**    | 33 test cases → 88 test runs across 6 Playwright projects                                                        |
+| **Automated**    | 60 test cases → 167 test runs across 6 Playwright projects                                                       |
 | **Traceability** | [`docs/traceability.md`](docs/traceability.md): every case with its spec file, or the reason it is not automated |
 | **Stack**        | Playwright 1.59 · TypeScript 5.9 · Node.js ≥ 20 · ESLint · Prettier · k6 (optional)                              |
 
@@ -291,19 +291,20 @@ Every one of the 83 test cases was assessed on four criteria:
 3. **Cost and stability:** can it be automated without being flaky or slow?
 4. **Safety:** can it run repeatedly against a shared environment without harm?
 
-| Decision                      | Cases | Typical examples                                                                                                                                                |
-| ----------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Automated**                 | 26    | Login (valid/invalid/required fields), session, logout, add to cart, delete, full checkout, checkout validation, API contract, mobile login, performance budget |
-| **Automated as known defect** | 7     | Wrong order date, empty-cart order, shared guest cart, predictable token, cookie flags, HTTP 200 for errors                                                     |
-| **Backlog**                   | 25    | Automatable but lower priority: persistence after re-login, cart isolation between users, category/pagination, 10-item total                                    |
-| **Manual**                    | 25    | See reasons below                                                                                                                                               |
+| Decision                      | Cases | Typical examples                                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Automated**                 | 43    | Login (valid, invalid, required fields, special characters, long input), sign-up, session, logout, add to cart, categories, delete, 10-item total, persistence, cart isolation between users, full checkout, checkout validation, cookie tampering, HTTPS, API contract, mobile login and cart, performance budget |
+| **Automated as known defect** | 17    | Wrong order date, empty-cart order, shared guest cart, no login lockout, double submit, predictable token, cookie flags, readable password, HTTP 200 for errors, unconfirmed login rules (spaces, case, Enter key)                                                                                                 |
+| **Backlog**                   | 11    | Automatable, lower priority: price consistency across pages, stale order amount, logged-in state on every page, unknown product page                                                                                                                                                                               |
+| **Manual**                    | 12    | See reasons below                                                                                                                                                                                                                                                                                                  |
 
 Why some cases stay **manual**:
 
-- **Requirement not confirmed:** for example card-number validation that the site does not have. Automate once the product owner agrees the rule; until then it is a potential defect, not a regression check.
-- **Timing races** (double-clicks, rapid clicks): non-deterministic by nature and would make the suite flaky.
-- **Destructive on a shared environment:** account lockout after failed logins would lock real users out.
-- **Human judgement or specialist tooling:** visual layout, XSS/transport security (better in a DAST tool).
+- **Checkout rules not agreed yet** (card number, expiry, required fields, masking: CRT-035–040, CRT-044–045): the site has no such validation. Agree the rules with the product owner first, then automate them.
+- **Depends on an intermittent defect** (CRT-011, rapid repeated clicks): the result follows the random lost-items bug PD-14, so an automated test would pass or fail at random.
+- **Human judgement or specialist tooling:** visual layout (CRT-041), console-error judgement (CRT-004), XSS probing (CRT-042, better in a DAST tool).
+
+Where the expected behaviour is an assumption but the site's current behaviour is stable (for example the login rules for spaces and letter case), the case is automated as a known defect, so any change in behaviour is flagged.
 
 The full per-case decision is in [`docs/traceability.md`](docs/traceability.md) and in the _Automation_ columns of the workbook.
 
@@ -363,18 +364,28 @@ All settings live in `.env` (copy `.env.example`); environment variables overrid
 | `TIMEZONE`                      | `Asia/Kuala_Lumpur` | Browser timezone (used by the order-date check)                    |
 | `CART_PAGE_BUDGET_MS`           | `3000`              | Performance budget for CRT-019                                     |
 
-Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config.ts`.
+Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config.ts`. The Firefox project always allows 1 retry: Firefox occasionally throws an internal error while Playwright closes the browser after a test has passed. A test that needed the retry is reported as **flaky**, never hidden.
 
 ---
 
 ## 10. Known defects
 
-Found during manual and automated testing, and kept as expected-to-fail automated tests (full list of 22 potential defects in the workbook):
+Found during manual and automated testing, and kept as expected-to-fail automated tests (full list of 27 potential defects in the workbook):
 
 | Defect | Summary                                                                                                                                                   | Test             |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
 | PD-01  | Order can be placed with an empty cart ("Amount: 0 USD")                                                                                                  | CRT-029          |
 | PD-22  | Guests who open a product page directly all share **one cart** (empty guest id). Found by the first automated run, which saw 121–134 other people's items | CRT-049          |
+| PD-25  | **No lockout or rate limit:** 10 wrong passwords in a row are all answered with "Wrong password.", so passwords can be brute-forced                       | LGN-018          |
+| PD-24  | Double-clicking **Purchase** submits the order twice                                                                                                      | CRT-043          |
+| PD-23  | Double-clicking **Log in** sends two login requests                                                                                                       | LGN-019          |
+| PD-07  | Password is sent Base64-encoded, which anyone can decode                                                                                                  | LGN-029          |
+| PD-09  | Items added as a guest are lost after logging in                                                                                                          | CRT-023          |
+| PD-05  | Spaces-only username and password are sent to the server instead of being blocked                                                                         | LGN-011          |
+| PD-10  | Pressing Enter in the password field does not log in                                                                                                      | LGN-020          |
+| PD-11  | Login modal keeps typed values after Close                                                                                                                | LGN-021          |
+| PD-26  | Spaces around the username are not trimmed (requirement to confirm)                                                                                       | LGN-012          |
+| PD-27  | Username is case-sensitive (requirement to confirm)                                                                                                       | LGN-013          |
 | PD-02  | Confirmation date shows the previous month (0-based month)                                                                                                | CRT-027          |
 | PD-08  | Auth cookie `tokenp_` has no Secure/HttpOnly flags                                                                                                        | LGN-027          |
 | PD-18  | Auth token is Base64 of username + number, so it is predictable                                                                                           | LGN-026          |
