@@ -4,7 +4,7 @@ import { PRODUCTS } from '@data/products';
 import { expect, test } from '@fixtures';
 import { DEFECT, expectKnownDefect, knownDefectDetails } from '@fixtures/known-defect';
 
-const { samsungGalaxyS6, nokiaLumia1520, sonyVaioI5 } = PRODUCTS;
+const { samsungGalaxyS6, nokiaLumia1520, nexus6, sonyVaioI5 } = PRODUCTS;
 
 test.describe('Add to cart', { tag: TAG.REGRESSION }, () => {
   test(
@@ -63,6 +63,44 @@ test.describe('Add to cart', { tag: TAG.REGRESSION }, () => {
 
     await cartPage.open();
     await cartPage.expectContents([samsungGalaxyS6, nokiaLumia1520]);
+  });
+
+  // CRT-010 and CRT-011 guard against PD-14 (an intermittent case where 'Product added.' was shown
+  // but the item was not saved). If it comes back, the trace shows which /addtocart call was lost.
+  test("CRT-010 Verify every 'Product added.' alert results in a saved item", async ({
+    session: _session,
+    homePage,
+    productPage,
+    cartPage,
+  }) => {
+    const picks = [samsungGalaxyS6, samsungGalaxyS6, nokiaLumia1520];
+    for (const product of picks) {
+      await test.step(`add ${product.name}`, async () => {
+        await homePage.open();
+        await homePage.openProduct(product);
+        expect(await productPage.addToCart()).toBe(ALERT.PRODUCT_ADDED);
+      });
+    }
+
+    await cartPage.openFromNavBar();
+    await cartPage.expectContents(picks);
+  });
+
+  test("CRT-011 Verify rapid repeated 'Add to cart' clicks are all saved", async ({
+    session: _session,
+    homePage,
+    productPage,
+    cartPage,
+  }) => {
+    await homePage.open();
+    await homePage.openProduct(nexus6);
+    await productPage.expectProduct(nexus6);
+
+    const alerts = await productPage.addToCartRapidly(3);
+    expect(alerts).toEqual([ALERT.PRODUCT_ADDED, ALERT.PRODUCT_ADDED, ALERT.PRODUCT_ADDED]);
+
+    await cartPage.openFromNavBar();
+    await cartPage.expectContents([nexus6, nexus6, nexus6]);
   });
 
   test('CRT-005 Verify a product from the Laptops category can be added to the cart', async ({
