@@ -402,7 +402,7 @@ Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config
 
 ## 10. Known defects
 
-These are the 18 defects that have an expected-to-fail automated test, in ID order. The other 10 (PD-03, PD-04, PD-12 to PD-17, PD-20, PD-21) were found by manual testing and need manual or product-owner follow-up; all 28 are in the _Potential Defects_ sheet of the workbook.
+These are the 18 defects that have an expected-to-fail automated test, in ID order. The other 9 (PD-03, PD-04, PD-12, PD-13, PD-15 to PD-17, PD-20, PD-21) were found by manual testing and need manual or product-owner follow-up; all 27 are in the _Potential Defects_ sheet of the workbook. (PD-14, an item lost once after 'Product added.', was withdrawn: it never came back, manually or in CRT-010/011. Its ID is not reused.)
 
 | Defect | Summary                                                                                                                                                                                                                                                            | Test             |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |

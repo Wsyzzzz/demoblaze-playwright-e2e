@@ -65,8 +65,8 @@ test.describe('Add to cart', { tag: TAG.REGRESSION }, () => {
     await cartPage.expectContents([samsungGalaxyS6, nokiaLumia1520]);
   });
 
-  // CRT-010 and CRT-011 guard against PD-14 (an intermittent case where 'Product added.' was shown
-  // but the item was not saved). If it comes back, the trace shows which /addtocart call was lost.
+  // CRT-010 and CRT-011: every 'Product added.' alert must mean a saved item. (Once, in manual testing,
+  // an item went missing; if that ever comes back, the trace shows which /addtocart call was lost.)
   test("CRT-010 Verify every 'Product added.' alert results in a saved item", async ({
     session: _session,
     homePage,

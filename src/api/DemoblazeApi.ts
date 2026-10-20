@@ -118,7 +118,7 @@ export class DemoblazeApi {
 
   async addProducts(token: string, productIds: readonly number[]): Promise<string[]> {
     const ids: string[] = [];
-    // Sequential on purpose: parallel writes to the same cart are unreliable on DemoBlaze (PD-14).
+    // Sequential on purpose: keeps the order of cart items predictable and avoids racing writes to one cart.
     for (const productId of productIds) {
       const { response, itemId } = await this.addToCart(token, productId);
       if (!response.ok()) throw new Error(`Add to cart failed for product ${productId}`);
