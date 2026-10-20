@@ -6,6 +6,15 @@ const isCI = !!process.env.CI;
 /** Browser-driven suites. API tests run once in their own project, not once per browser. */
 const BROWSER_SUITES = /tests[\\/](ui|security)[\\/].*\.spec\.ts$/;
 
+/**
+ * Performance budgets only mean something on a quiet machine and network. Measured in the
+ * middle of a full run, next to ~160 browser tests, they measure the test run itself. So the
+ * perf project runs only when it is asked for (npm run test:perf, --project=perf or a perf path).
+ * The flag goes into the environment so the worker processes build the same project list.
+ */
+if (process.argv.slice(2).some((arg) => /\bperf\b/.test(arg))) process.env.RUN_PERF = '1';
+const runPerf = process.env.RUN_PERF === '1';
+
 const reporters: ReporterDescription[] = [
   ['list'],
   ['html', { outputFolder: 'reports/html', open: 'never' }],
@@ -68,11 +77,15 @@ export default defineConfig({
       name: 'api',
       testMatch: /tests[\\/]api[\\/].*\.spec\.ts$/,
     },
-    {
-      name: 'perf',
-      testMatch: /tests[\\/]perf[\\/].*\.spec\.ts$/,
-      retries: 0,
-      use: { ...devices['Desktop Chrome'] },
-    },
+    ...(runPerf
+      ? [
+          {
+            name: 'perf',
+            testMatch: /tests[\\/]perf[\\/].*\.spec\.ts$/,
+            retries: 0,
+            use: { ...devices['Desktop Chrome'] },
+          },
+        ]
+      : []),
   ],
 });

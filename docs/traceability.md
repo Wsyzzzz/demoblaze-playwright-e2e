@@ -3,7 +3,7 @@
 Every test case in [`DemoBlaze_Test_Cases.xlsx`](DemoBlaze_Test_Cases.xlsx) and what happened to it in this framework.
 Test titles in the code start with the same ID, so a failing test in any report maps straight back to its test case.
 
-**83 test cases:** 60 automated (17 as known-defect tests) · 11 backlog · 12 manual
+**84 test cases:** 61 automated (18 as known-defect tests) · 11 backlog · 12 manual
 
 ## Login
 
@@ -97,3 +97,4 @@ Test titles in the code start with the same ID, so a failing test in any report 
 | CRT-047 | Verify POST /deleteitem removes the item from the cart                          | P3       | API         | Automated                | `tests/api/cart.api.spec.ts`                                                                                    |
 | CRT-048 | Verify POST /view returns 404 for an unknown product                            | P3       | API         | Automated (known defect) | `tests/api/product.api.spec.ts`                                                                                 |
 | CRT-049 | Verify a guest who opens a product page directly gets a private cart            | P1       | Security    | Automated (known defect) | `tests/ui/cart/add-to-cart.spec.ts`                                                                             |
+| CRT-050 | Verify the cart is emptied when the order is confirmed straight away            | P2       | Functional  | Automated (known defect) | `tests/ui/checkout/place-order.spec.ts`                                                                         |

@@ -39,7 +39,7 @@ test.describe('Place order', { tag: TAG.REGRESSION }, () => {
         await cartPage.openPlaceOrder();
         await placeOrderModal.expectOpenWithTotal(totalOf(BASKET));
         await placeOrderModal.fill(VALID_CHECKOUT);
-        await placeOrderModal.purchase();
+        await placeOrderModal.purchaseAndWaitForCartClear();
       });
 
       await test.step('verify confirmation', async () => {
@@ -91,15 +91,47 @@ test.describe('Place order', { tag: TAG.REGRESSION }, () => {
 
     await cartPage.openPlaceOrder();
     await placeOrderModal.fill(VALID_CHECKOUT);
-    await placeOrderModal.purchase();
+    await placeOrderModal.purchaseAndWaitForCartClear();
     await orderConfirmation.read();
     await orderConfirmation.confirm();
 
-    // DemoBlaze empties the cart with a fire-and-forget request, so wait for the server state first.
-    await expect.poll(async () => (await api.viewCart(session.token)).length, { timeout: 15_000 }).toBe(0);
+    // Server state first (the API is the source of truth), then what the user sees.
+    await expect.poll(async () => (await api.viewCart(session.token)).length).toBe(0);
     await cartPage.open();
     await cartPage.expectEmpty();
   });
+
+  test(
+    'CRT-050 Verify the cart is emptied when the order is confirmed straight away',
+    knownDefectDetails(DEFECT.CART_CLEAR_CANCELLED),
+    async ({ session, api, cartPage, placeOrderModal, orderConfirmation, page, browserName }) => {
+      // The defect is in DemoBlaze's JavaScript, not in a browser, so one engine is enough to
+      // reproduce it on demand. (It also showed up by itself on Chromium and Firefox in CRT-026.)
+      test.skip(browserName !== 'chromium', 'Site defect, reproduced on Chromium only');
+      expectKnownDefect(DEFECT.CART_CLEAR_CANCELLED);
+      await api.addProducts(session.token, [samsungGalaxyS6.id]);
+      await cartPage.open();
+      await cartPage.expectContents([samsungGalaxyS6]);
+
+      // A slow network for the cart-clear call only: it is still on its way when the user presses OK.
+      await page.route('**/deletecart', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 3_000));
+        // By now the page has moved to Home and the browser has cancelled the request.
+        await route.continue().catch(() => undefined);
+      });
+      await cartPage.openPlaceOrder();
+      await placeOrderModal.fill(VALID_CHECKOUT);
+      await placeOrderModal.purchase();
+      await orderConfirmation.confirm();
+
+      await expect
+        .poll(async () => (await api.viewCart(session.token)).length, {
+          message: 'the bought item should no longer be in the cart',
+          timeout: 10_000,
+        })
+        .toBe(0);
+    },
+  );
 
   test(
     "CRT-027 Verify the confirmation shows today's date",
@@ -137,16 +169,16 @@ test.describe('Place order', { tag: TAG.REGRESSION }, () => {
 
     await cartPage.openPlaceOrder();
     await placeOrderModal.fill(VALID_CHECKOUT);
-    await placeOrderModal.purchase();
+    await placeOrderModal.purchaseAndWaitForCartClear();
     const receipt = await orderConfirmation.read();
     expect(receipt.amount).toBe(nokiaLumia1520.price);
     await orderConfirmation.confirm();
 
-    // The cart is emptied by a fire-and-forget request; re-open until the server state is visible.
+    // Re-open until the server reflects the delete (the same check CRT-026 does with the API).
     await expect(async () => {
       await cartPage.open();
       await expect(cartPage.rows).toHaveCount(0, { timeout: 3_000 });
-    }).toPass({ timeout: 20_000 });
+    }).toPass({ timeout: 10_000 });
   });
 
   test(

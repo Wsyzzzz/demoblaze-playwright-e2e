@@ -6,8 +6,8 @@ The framework runs UI, API, security and performance checks from one code base, 
 
 |                  |                                                                                                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Test cases**   | 83 documented in [`docs/DemoBlaze_Test_Cases.xlsx`](docs/DemoBlaze_Test_Cases.xlsx)                              |
-| **Automated**    | 60 test cases → 167 test runs across 6 Playwright projects                                                       |
+| **Test cases**   | 84 documented in [`docs/DemoBlaze_Test_Cases.xlsx`](docs/DemoBlaze_Test_Cases.xlsx)                              |
+| **Automated**    | 61 test cases → 169 test runs in a full run, plus the performance budget run on its own                          |
 | **Traceability** | [`docs/traceability.md`](docs/traceability.md): every case with its spec file, or the reason it is not automated |
 | **Stack**        | Playwright 1.59 · TypeScript 5.9 · Node.js ≥ 20 · ESLint · Prettier · k6 (optional)                              |
 
@@ -93,11 +93,11 @@ To step through a demo test line by line: `npx playwright test --grep "CRT-025" 
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | Smoke suite: critical path on Chromium + API                         | `npm run test:smoke`                                                   |
 | Full regression: all browsers, mobile and API                        | `npm run test:regression`                                              |
-| Everything, including performance                                    | `npm test`                                                             |
+| Everything except performance (all browsers, mobile, API)            | `npm test`                                                             |
 | One browser only                                                     | `npm run test:ui` (Chromium) · `npx playwright test --project=firefox` |
 | API tests only                                                       | `npm run test:api`                                                     |
 | Mobile emulation (Pixel 7)                                           | `npm run test:mobile`                                                  |
-| Performance budget check                                             | `npm run test:perf`                                                    |
+| Performance budget check (runs on its own, see below)                | `npm run test:perf`                                                    |
 | Watch the browser                                                    | `npm run test:headed`                                                  |
 | Step through with the inspector                                      | `npm run test:debug`                                                   |
 | By tag                                                               | `npx playwright test --grep @security`                                 |
@@ -105,6 +105,8 @@ To step through a demo test line by line: `npx playwright test --grep "CRT-025" 
 | Load test (needs [k6](https://k6.io/docs/get-started/installation/)) | `npm run perf:load`                                                    |
 
 The demo flows from the brief have their own section: [2. Run the demo](#2-run-the-demo).
+
+**Why performance runs separately:** a time budget only means something on a quiet machine and network. In the middle of a full run the page competes with about 160 other browser tests for CPU and bandwidth, so the measurement reflects the test run, not the site. `npx playwright test` therefore leaves the `perf` project out, and it runs when you ask for it (`npm run test:perf`, `--project=perf`, or a path under `tests/perf`). CI already runs it as its own job.
 
 **Running against your own account** instead of throwaway users:
 
@@ -233,20 +235,20 @@ The exceptions are deliberate:
 
 - **CRT-025**, the business-critical journey from the brief, runs **fully through the UI**.
 - **LGN-004** and **LGN-027** log in through the UI, because the login itself (or the cookie the site sets) is what they test.
-- **Guest journeys start on the Home page**, because that is where DemoBlaze creates the guest id. Landing on a product page directly is covered separately by CRT-049, which exposed defect PD-22.
+- **Guest journeys start on the Home page**, because that is where DemoBlaze creates the guest id. Landing on a product page directly is covered separately by CRT-049, which exposed defect PD-22. Opening `cart.html` directly as a guest is just as harmful: it loads the shared guest cart (hundreds of items, one API call each) and slows the API down for every test running at the same time.
 
 ### 5.6 Deterministic waits, never `waitForTimeout`
 
 DemoBlaze loads cart rows asynchronously and reloads pages after login and delete. Instead of sleeping, the framework waits for the **real signal**:
 
-| Situation        | What the framework waits for                                                                                                                            |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cart page        | The `/viewcart` response, before asserting, so an "empty cart" check cannot pass early                                                                  |
-| Login            | The page `load` event the site triggers                                                                                                                 |
-| Delete from cart | The `/viewcart` call after the reload                                                                                                                   |
-| Order placed     | Server-side cart state (`expect.poll`), because the site empties the cart with a fire-and-forget request                                                |
-| Purchase dialog  | The SweetAlert `visible` class: its OK button only works once the opening animation has finished                                                        |
-| Modal forms      | Every typed value is verified (`fillAndVerify`), because Bootstrap moves focus when a modal finishes opening and can interrupt typing on Firefox/WebKit |
+| Situation        | What the framework waits for                                                                                                                                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cart page        | The `/viewcart` response, before asserting, so an "empty cart" check cannot pass early                                                                                                             |
+| Login            | The page `load` event the site triggers                                                                                                                                                            |
+| Delete from cart | The `/viewcart` call after the reload                                                                                                                                                              |
+| Order placed     | The site's own `POST /deletecart` response before pressing OK (`purchaseAndWaitForCartClear`), then the server-side cart state (`expect.poll`). Pressing OK sooner cancels that call: defect PD-28 |
+| Purchase dialog  | The SweetAlert `visible` class: its OK button only works once the opening animation has finished                                                                                                   |
+| Modal forms      | Every typed value is verified (`fillAndVerify`), because Bootstrap moves focus when a modal finishes opening and can interrupt typing on Firefox/WebKit                                            |
 
 Native `alert()` dialogs are handled by `acceptNextDialog()`. It registers the handler before the click, because some DemoBlaze alerts fire synchronously inside the click handler.
 
@@ -271,12 +273,12 @@ Assertions are scoped to the test case's objective. For example, the end-to-end 
 | `@api` · `@security` · `@perf` · `@mobile` | Test type                                         |
 | `@known-defect`                            | Expected to fail until the linked defect is fixed |
 
-| Project                         | Runs                                              |
-| ------------------------------- | ------------------------------------------------- |
-| `chromium`, `firefox`, `webkit` | UI and security specs on desktop browsers         |
-| `mobile-chrome`                 | `@smoke` + `@mobile` specs on an emulated Pixel 7 |
-| `api`                           | API specs once, with no browser (fast)            |
-| `perf`                          | Performance budgets on Chromium, without retries  |
+| Project                         | Runs                                                                 |
+| ------------------------------- | -------------------------------------------------------------------- |
+| `chromium`, `firefox`, `webkit` | UI and security specs on desktop browsers                            |
+| `mobile-chrome`                 | `@smoke` + `@mobile` specs on an emulated Pixel 7                    |
+| `api`                           | API specs once, with no browser (fast)                               |
+| `perf`                          | Performance budgets on Chromium, without retries; only when selected |
 
 ### 5.10 Configuration
 
@@ -286,7 +288,7 @@ Assertions are scoped to the test case's objective. For example, the end-to-end 
 
 ## 6. What is automated and why
 
-Every one of the 83 test cases was assessed on four criteria:
+Every one of the 84 test cases was assessed on four criteria:
 
 1. **Regression value:** will this protect us on every release?
 2. **Determinism:** is there a single stable expected result?
@@ -296,7 +298,7 @@ Every one of the 83 test cases was assessed on four criteria:
 | Decision                      | Cases | Typical examples                                                                                                                                                                                                                                                                                                   |
 | ----------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Automated**                 | 43    | Login (valid, invalid, required fields, special characters, long input), sign-up, session, logout, add to cart, categories, delete, 10-item total, persistence, cart isolation between users, full checkout, checkout validation, cookie tampering, HTTPS, API contract, mobile login and cart, performance budget |
-| **Automated as known defect** | 17    | Wrong order date, empty-cart order, shared guest cart, no login lockout, double submit, predictable token, cookie flags, readable password, HTTP 200 for errors, unconfirmed login rules (spaces, case, Enter key)                                                                                                 |
+| **Automated as known defect** | 18    | Wrong order date, empty-cart order, shared guest cart, cart not emptied after a quick OK, no login lockout, double submit, predictable token, cookie flags, readable password, HTTP 200 for errors, unconfirmed login rules (spaces, case, Enter key)                                                              |
 | **Backlog**                   | 11    | Automatable, lower priority: price consistency across pages, stale order amount, logged-in state on every page, unknown product page                                                                                                                                                                               |
 | **Manual**                    | 12    | See reasons below                                                                                                                                                                                                                                                                                                  |
 
@@ -329,7 +331,7 @@ To debug a CI failure, download the report artifact and run `npx playwright show
 
 **Why known defects need special handling:** a known-defect test fails _as expected_, so Playwright counts it as passed and would discard its failure screenshot and video under the "only on failure" settings. The `page` fixture (`src/fixtures/evidence.ts`) keeps them anyway, so every open defect always has fresh proof from the latest run.
 
-The performance test attaches `cart-page-metrics.json` (time to cart ready, DOMContentLoaded, load, transfer size) to the report on every run, so trends are visible even when the budget passes.
+The performance test loads the cart 3 times in fresh browser contexts (empty cache, like a first visit) and compares the **median** with the budget, so one slow request cannot fail it. It attaches `cart-page-metrics.json` (every sample's time to cart ready, DOMContentLoaded, load and transfer size) to the report on every run, so trends are visible even when the budget passes.
 
 ---
 
@@ -368,7 +370,7 @@ All settings have working defaults in `src/config/env.ts`, so **no `.env` file i
 | `USER_STRATEGY`                 | `per-worker`        | `per-worker` (throwaway accounts) or `env` (use the account below) |
 | `VALID_USER` / `VALID_PASSWORD` | —                   | Account for `USER_STRATEGY=env`                                    |
 | `TIMEZONE`                      | `Asia/Kuala_Lumpur` | Browser timezone (used by the order-date check)                    |
-| `CART_PAGE_BUDGET_MS`           | `3000`              | Performance budget for CRT-019                                     |
+| `CART_PAGE_BUDGET_MS`           | `3000`              | Performance budget for CRT-019 (median of 3 cold loads)            |
 
 Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config.ts`. Retries are never used to hide a known problem: a rare Firefox start-up race ([microsoft/playwright#43413](https://github.com/microsoft/playwright/issues/43413)) is fixed at its source by opening and closing one warm-up window per Firefox worker (`browser` fixture in `src/fixtures/index.ts`).
 
@@ -376,27 +378,28 @@ Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config
 
 ## 10. Known defects
 
-Found during manual and automated testing, and kept as expected-to-fail automated tests (full list of 27 potential defects in the workbook):
+Found during manual and automated testing, and kept as expected-to-fail automated tests (full list of 28 potential defects in the workbook):
 
-| Defect | Summary                                                                                                                                                   | Test             |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| PD-01  | Order can be placed with an empty cart ("Amount: 0 USD")                                                                                                  | CRT-029          |
-| PD-22  | Guests who open a product page directly all share **one cart** (empty guest id). Found by the first automated run, which saw 121–134 other people's items | CRT-049          |
-| PD-25  | **No lockout or rate limit:** 10 wrong passwords in a row are all answered with "Wrong password.", so passwords can be brute-forced                       | LGN-018          |
-| PD-24  | Double-clicking **Purchase** submits the order twice                                                                                                      | CRT-043          |
-| PD-23  | Double-clicking **Log in** sends two login requests                                                                                                       | LGN-019          |
-| PD-07  | Password is sent Base64-encoded, which anyone can decode                                                                                                  | LGN-029          |
-| PD-09  | Items added as a guest are lost after logging in                                                                                                          | CRT-023          |
-| PD-05  | Spaces-only username and password are sent to the server instead of being blocked                                                                         | LGN-011          |
-| PD-10  | Pressing Enter in the password field does not log in                                                                                                      | LGN-020          |
-| PD-11  | Login modal keeps typed values after Close                                                                                                                | LGN-021          |
-| PD-26  | Spaces around the username are not trimmed (requirement to confirm)                                                                                       | LGN-012          |
-| PD-27  | Username is case-sensitive (requirement to confirm)                                                                                                       | LGN-013          |
-| PD-02  | Confirmation date shows the previous month (0-based month)                                                                                                | CRT-027          |
-| PD-08  | Auth cookie `tokenp_` has no Secure/HttpOnly flags                                                                                                        | LGN-027          |
-| PD-18  | Auth token is Base64 of username + number, so it is predictable                                                                                           | LGN-026          |
-| PD-19  | API returns HTTP 200 for errors (should be 401/404)                                                                                                       | LGN-034, CRT-048 |
-| PD-06  | Guest alert text "Product added" lacks the full stop (annotated, not asserted)                                                                            | CRT-007          |
+| Defect | Summary                                                                                                                                                                                          | Test             |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
+| PD-01  | Order can be placed with an empty cart ("Amount: 0 USD")                                                                                                                                         | CRT-029          |
+| PD-22  | Guests who open a product page directly all share **one cart** (empty guest id). Found by the first automated run, which saw 121–134 other people's items                                        | CRT-049          |
+| PD-28  | Pressing **OK** on the order confirmation before the site's cart-clear call finishes cancels that call: the bought items **stay in the cart**. Found when CRT-026 failed on Chromium and Firefox | CRT-050          |
+| PD-25  | **No lockout or rate limit:** 10 wrong passwords in a row are all answered with "Wrong password.", so passwords can be brute-forced                                                              | LGN-018          |
+| PD-24  | Double-clicking **Purchase** submits the order twice                                                                                                                                             | CRT-043          |
+| PD-23  | Double-clicking **Log in** sends two login requests                                                                                                                                              | LGN-019          |
+| PD-07  | Password is sent Base64-encoded, which anyone can decode                                                                                                                                         | LGN-029          |
+| PD-09  | Items added as a guest are lost after logging in                                                                                                                                                 | CRT-023          |
+| PD-05  | Spaces-only username and password are sent to the server instead of being blocked                                                                                                                | LGN-011          |
+| PD-10  | Pressing Enter in the password field does not log in                                                                                                                                             | LGN-020          |
+| PD-11  | Login modal keeps typed values after Close                                                                                                                                                       | LGN-021          |
+| PD-26  | Spaces around the username are not trimmed (requirement to confirm)                                                                                                                              | LGN-012          |
+| PD-27  | Username is case-sensitive (requirement to confirm)                                                                                                                                              | LGN-013          |
+| PD-02  | Confirmation date shows the previous month (0-based month)                                                                                                                                       | CRT-027          |
+| PD-08  | Auth cookie `tokenp_` has no Secure/HttpOnly flags                                                                                                                                               | LGN-027          |
+| PD-18  | Auth token is Base64 of username + number, so it is predictable                                                                                                                                  | LGN-026          |
+| PD-19  | API returns HTTP 200 for errors (should be 401/404)                                                                                                                                              | LGN-034, CRT-048 |
+| PD-06  | Guest alert text "Product added" lacks the full stop (annotated, not asserted)                                                                                                                   | CRT-007          |
 
 ---
 
@@ -414,7 +417,7 @@ Found during manual and automated testing, and kept as expected-to-fail automate
 
 ## 12. Roadmap
 
-- Automate the 25 backlog cases, starting with cart isolation between two users (CRT-022, P1).
+- Automate the 11 backlog cases, starting with price consistency across pages and the stale order amount.
 - Visual regression snapshots for the cart and confirmation dialog.
 - Allure or a test-management integration (for example Xray/Zephyr) driven by the JUnit output.
 - Sharded runs (`--shard`) once the suite outgrows a single job.

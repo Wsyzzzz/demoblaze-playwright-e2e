@@ -216,6 +216,7 @@ test.describe('Login from other pages', { tag: TAG.REGRESSION }, () => {
   test('LGN-005 Verify logging in from the Cart page keeps the user on the Cart page', async ({
     api,
     testUser,
+    homePage,
     cartPage,
     navBar,
     loginModal,
@@ -226,15 +227,19 @@ test.describe('Login from other pages', { tag: TAG.REGRESSION }, () => {
     await api.clearCart(token);
     await api.addProducts(token, [PRODUCTS.samsungGalaxyS6.id]);
 
-    await cartPage.open();
-    await navBar.openLogin();
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes('/viewcart') && r.ok()),
-      loginModal.logIn(testUser.username, testUser.password),
-    ]);
+    // Guests start on Home, where DemoBlaze creates the guest id cookie. Opening cart.html
+    // directly would load the cart shared by every guest without an id (PD-22): hundreds of
+    // items, each fetched with its own request, which slows the API down for every test.
+    await homePage.open();
+    await cartPage.openFromNavBar();
+    await cartPage.expectEmpty();
 
-    await expect(page).toHaveURL(/\/cart\.html/);
+    await navBar.openLogin();
+    await loginModal.logIn(testUser.username, testUser.password);
+
+    // Logging in reloads the current page; these assertions wait for the reloaded cart.
     await navBar.expectLoggedInAs(testUser.username);
+    await expect(page).toHaveURL(/\/cart\.html/);
     await cartPage.expectContents([PRODUCTS.samsungGalaxyS6]);
   });
 });

@@ -40,6 +40,11 @@ export const DEFECT = {
   COOKIE_FLAGS: { id: 'PD-08', summary: 'Auth cookie tokenp_ lacks Secure/HttpOnly flags' },
   PREDICTABLE_TOKEN: { id: 'PD-18', summary: 'Auth token is Base64 of username + number' },
   HTTP_200_ERRORS: { id: 'PD-19', summary: 'API returns HTTP 200 for error responses' },
+  CART_CLEAR_CANCELLED: {
+    id: 'PD-28',
+    summary:
+      'Pressing OK on the order confirmation too soon cancels the cart-clear call; bought items stay in the cart',
+  },
   SHARED_GUEST_CART: {
     id: 'PD-22',
     summary: 'Guests who open a product page directly all share one cart (empty guest id)',
