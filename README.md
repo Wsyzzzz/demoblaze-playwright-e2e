@@ -139,6 +139,7 @@ demoblaze-playwright-e2e/
 ├── src/                          # Framework code – no test cases here
 │   ├── config/env.ts             # Typed, validated configuration (environments + overrides)
 │   ├── api/DemoblazeApi.ts       # API client: used by API tests and for fast test setup
+│   ├── api/ApiCallLog.ts         # Request/response history for the report (secrets masked)
 │   ├── pages/                    # Page Object Model
 │   │   ├── BasePage.ts
 │   │   ├── HomePage.ts
@@ -152,22 +153,23 @@ demoblaze-playwright-e2e/
 │   │       └── OrderConfirmation.ts
 │   ├── fixtures/
 │   │   ├── index.ts              # Custom test(): page objects, api, testUser, session
-│   │   └── known-defect.ts       # Expected-to-fail handling + defect register
+│   │   ├── known-defect.ts       # Expected-to-fail handling + defect register
+│   │   └── evidence.ts           # Keeps screenshot/video/API-log evidence for known defects
 │   ├── data/                     # Test data, kept out of the specs
 │   │   ├── products.ts           #   catalogue (verified against GET /entries)
 │   │   ├── checkout.ts           #   checkout form data
 │   │   ├── login-validation.json #   data-driven login cases
 │   │   └── order-validation.ts   #   data-driven checkout cases
 │   ├── constants/                # Tags and user-facing messages
-│   └── utils/                    # Dialog handling, encoding, dates, random data
+│   └── utils/                    # Dialog handling, form filling, encoding, dates, random data
 │
 ├── tests/                        # Specs, grouped by test type, then feature
 │   ├── ui/
 │   │   ├── auth/                 #   signup, login, session/logout
-│   │   ├── cart/                 #   add to cart, cart management
+│   │   ├── cart/                 #   add to cart, cart management, persistence and isolation
 │   │   └── checkout/             #   place order, order validation
 │   ├── api/                      #   auth, cart, product endpoints
-│   ├── security/                 #   session/cookie checks
+│   ├── security/                 #   login security (injection, lockout, HTTPS), session/cookie checks
 │   └── perf/                     #   page performance budgets
 │
 ├── perf/k6/api-load.js           # Optional load test (k6)
@@ -314,14 +316,18 @@ The full per-case decision is in [`docs/traceability.md`](docs/traceability.md) 
 
 Every run writes to `reports/`:
 
-| Output      | Path                        | Use                                                          |
-| ----------- | --------------------------- | ------------------------------------------------------------ |
-| HTML report | `reports/html/index.html`   | `npm run report`: steps, errors, screenshots, videos, traces |
-| JUnit XML   | `reports/junit/results.xml` | Jenkins / Azure DevOps / test-management import              |
-| JSON        | `reports/json/results.json` | Custom dashboards; used for the GitHub job summary           |
-| Artifacts   | `reports/test-results/`     | Trace, screenshot and video, **kept only for failed tests**  |
+| Output          | Path                                        | Use                                                                                                                                                    |
+| --------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| HTML report     | `reports/html/index.html`                   | `npm run report`: steps, errors, screenshots, videos, traces                                                                                           |
+| JUnit XML       | `reports/junit/results.xml`                 | Jenkins / Azure DevOps / test-management import                                                                                                        |
+| JSON            | `reports/json/results.json`                 | Custom dashboards; used for the GitHub job summary                                                                                                     |
+| Artifacts       | `reports/test-results/`                     | Trace, screenshot and video, **kept only for failed tests**                                                                                            |
+| Defect evidence | `reports/evidence/`                         | Screenshot + video of every **known-defect** test (API log for API-only ones), named `<defect>_<test case>_<browser>`: ready to attach to a bug ticket |
+| API log         | `api-log.txt` attachment in the HTML report | Every API call a test made: method, URL, request, status, timing and response, with **passwords, auth tokens and cart cookies masked**                 |
 
 To debug a CI failure, download the report artifact and run `npx playwright show-trace <trace.zip>` to replay the test step by step: DOM, network and console included.
+
+**Why known defects need special handling:** a known-defect test fails _as expected_, so Playwright counts it as passed and would discard its failure screenshot and video under the "only on failure" settings. The `page` fixture (`src/fixtures/evidence.ts`) keeps them anyway, so every open defect always has fresh proof from the latest run.
 
 The performance test attaches `cart-page-metrics.json` (time to cart ready, DOMContentLoaded, load, transfer size) to the report on every run, so trends are visible even when the budget passes.
 
@@ -353,7 +359,7 @@ A declarative pipeline running in the official `mcr.microsoft.com/playwright` Do
 
 ## 9. Configuration
 
-All settings live in `.env` (copy `.env.example`); environment variables override them.
+All settings have working defaults in `src/config/env.ts`, so **no `.env` file is needed** to run against DemoBlaze. To change something, create `.env` (copy `.env.example`); environment variables (for example in CI) override both.
 
 | Variable                        | Default             | Purpose                                                            |
 | ------------------------------- | ------------------- | ------------------------------------------------------------------ |

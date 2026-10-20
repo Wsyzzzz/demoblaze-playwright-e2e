@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { encodePassword } from '../utils/encoding';
+import { ApiCallLog } from './ApiCallLog';
 
 export interface CartItem {
   id: string;
@@ -29,44 +30,62 @@ const AUTH_PREFIX = 'Auth_token: ';
  * All endpoints are POST + JSON except GET /entries; errors come back as HTTP 200 + { errorMessage }.
  */
 export class DemoblazeApi {
+  /** Every call made through this client, for the test report (secrets masked). */
+  readonly log = new ApiCallLog();
+
   constructor(private readonly request: APIRequestContext) {}
+
+  private async send(
+    method: 'GET' | 'POST',
+    path: string,
+    data?: Record<string, unknown>,
+  ): Promise<APIResponse> {
+    const startedAt = Date.now();
+    const response =
+      method === 'GET' ? await this.request.get(path) : await this.request.post(path, { data });
+    await this.log.record(method, response.url(), data, startedAt, response);
+    return response;
+  }
 
   // ---------- raw endpoint calls (return the response, used by API tests) ----------
 
   signUp(username: string, password: string): Promise<APIResponse> {
-    return this.request.post('/signup', { data: { username, password: encodePassword(password) } });
+    return this.send('POST', '/signup', { username, password: encodePassword(password) });
   }
 
   login(username: string, password: string): Promise<APIResponse> {
-    return this.request.post('/login', { data: { username, password: encodePassword(password) } });
+    return this.send('POST', '/login', { username, password: encodePassword(password) });
   }
 
   check(token: string): Promise<APIResponse> {
-    return this.request.post('/check', { data: { token } });
+    return this.send('POST', '/check', { token });
   }
 
   entries(): Promise<APIResponse> {
-    return this.request.get('/entries');
+    return this.send('GET', '/entries');
   }
 
   view(productId: number | string): Promise<APIResponse> {
-    return this.request.post('/view', { data: { id: String(productId) } });
+    return this.send('POST', '/view', { id: String(productId) });
   }
 
   async addToCart(token: string, productId: number): Promise<{ response: APIResponse; itemId: string }> {
     const itemId = randomUUID();
-    const response = await this.request.post('/addtocart', {
-      data: { id: itemId, cookie: token, prod_id: productId, flag: true },
+    const response = await this.send('POST', '/addtocart', {
+      id: itemId,
+      cookie: token,
+      prod_id: productId,
+      flag: true,
     });
     return { response, itemId };
   }
 
   viewCartRaw(token: string): Promise<APIResponse> {
-    return this.request.post('/viewcart', { data: { cookie: token, flag: true } });
+    return this.send('POST', '/viewcart', { cookie: token, flag: true });
   }
 
   deleteItem(itemId: string): Promise<APIResponse> {
-    return this.request.post('/deleteitem', { data: { id: itemId } });
+    return this.send('POST', '/deleteitem', { id: itemId });
   }
 
   // ---------- helpers for test setup (throw with a clear message on failure) ----------

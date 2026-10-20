@@ -10,6 +10,7 @@ import { OrderConfirmation } from '../pages/components/OrderConfirmation';
 import { PlaceOrderModal } from '../pages/components/PlaceOrderModal';
 import { SignUpModal } from '../pages/components/SignUpModal';
 import { randomPassword, uniqueUsername } from '../utils/random';
+import { attachApiLog, isKnownDefect, saveKnownDefectEvidence } from './evidence';
 
 export interface TestUser {
   username: string;
@@ -97,10 +98,18 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     { scope: 'worker' },
   ],
 
-  api: async ({ playwright }, use) => {
+  api: async ({ playwright }, use, testInfo) => {
     const context = await playwright.request.newContext({ baseURL: env.apiUrl });
-    await use(new DemoblazeApi(context));
+    const api = new DemoblazeApi(context);
+    await use(api);
+    await attachApiLog(api, testInfo);
     await context.dispose();
+  },
+
+  /** Keeps screenshot + video evidence for known-defect tests (see ./evidence.ts). */
+  page: async ({ page }, use, testInfo) => {
+    await use(page);
+    if (isKnownDefect(testInfo)) await saveKnownDefectEvidence(page, testInfo);
   },
 
   session: async ({ context, api, testUser }, use) => {
