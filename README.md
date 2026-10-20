@@ -272,6 +272,7 @@ Assertions are scoped to the test case's objective. For example, the end-to-end 
 | `@regression`                              | Full suite, run nightly                           |
 | `@api` · `@security` · `@perf` · `@mobile` | Test type                                         |
 | `@known-defect`                            | Expected to fail until the linked defect is fixed |
+| `@pd-01` … `@pd-28`                        | The defect a known-defect test belongs to         |
 | `@chromium-only`                           | Left out of the Firefox and WebKit projects       |
 
 | Project                         | Runs                                                                          |
@@ -331,6 +332,19 @@ npm run report -- 20261020_134100 # open a specific run's report
 | Artifacts       | `reports/test-results/`                     | Trace, screenshot and video, **kept only for failed tests**                                                                                            |
 | Defect evidence | `reports/evidence/`                         | Screenshot + video of every **known-defect** test (API log for API-only ones), named `<defect>_<test case>_<browser>`: ready to attach to a bug ticket |
 | API log         | `api-log.txt` attachment in the HTML report | Every API call a test made: method, URL, request, status, timing and response, with **passwords, auth tokens and cart cookies masked**                 |
+
+**Searching the HTML report.** Words without `@` match anywhere in a test's title, file, browser or tags. A word starting with `@` is a tag filter and must be the **exact** tag name, in lower case: `@known-defect` works, `@defect-known`, `@known` or `@Known-Defect` finds nothing. Clicking a tag chip on any test applies its filter.
+
+| Search                                      | Shows                                                                        |
+| ------------------------------------------- | ---------------------------------------------------------------------------- |
+| `CRT-025` · `cart` · `defect`               | Tests with that text in their title, file, browser or tags                   |
+| `@known-defect`                             | All expected-to-fail tests for open defects                                  |
+| `@pd-22`                                    | The tests for one defect (each known-defect test has its defect ID as a tag) |
+| `@smoke` · `@api` · `@security` · `@mobile` | Tests of that type                                                           |
+| `p:webkit` · `s:failed`                     | One browser/project · one status (passed, failed, flaky, skipped)            |
+| `@known-defect p:firefox`                   | Combine filters: all must match                                              |
+
+The same tags work on the command line, for example `npx playwright test --grep @pd-22` runs only the tests for PD-22.
 
 To debug a CI failure, download the report artifact and run `npx playwright show-trace <trace.zip>` to replay the test step by step: DOM, network and console included.
 

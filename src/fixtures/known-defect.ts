@@ -6,10 +6,14 @@ export interface KnownDefect {
   summary: string;
 }
 
-/** Test details for a case that documents an open defect: tag + an "issue" annotation in the report. */
+/**
+ * Test details for a case that documents an open defect: the @known-defect tag, a tag with the
+ * defect ID (e.g. @pd-22, lower case because the HTML report's @ filter compares in lower case)
+ * and an "issue" annotation with the summary.
+ */
 export function knownDefectDetails(defect: KnownDefect, extraTags: string[] = []) {
   return {
-    tag: [TAG.KNOWN_DEFECT, ...extraTags],
+    tag: [TAG.KNOWN_DEFECT, `@${defect.id.toLowerCase()}`, ...extraTags],
     annotation: { type: 'issue', description: `${defect.id}: ${defect.summary}` },
   };
 }
