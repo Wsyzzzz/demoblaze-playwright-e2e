@@ -30,4 +30,8 @@ export const DEFECT = {
   COOKIE_FLAGS: { id: 'PD-08', summary: 'Auth cookie tokenp_ lacks Secure/HttpOnly flags' },
   PREDICTABLE_TOKEN: { id: 'PD-18', summary: 'Auth token is Base64 of username + number' },
   HTTP_200_ERRORS: { id: 'PD-19', summary: 'API returns HTTP 200 for error responses' },
+  SHARED_GUEST_CART: {
+    id: 'PD-22',
+    summary: 'Guests who open a product page directly all share one cart (empty guest id)',
+  },
 } as const satisfies Record<string, KnownDefect>;

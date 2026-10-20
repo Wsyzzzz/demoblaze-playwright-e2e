@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { acceptNextDialog } from '../../utils/dialogs';
+import { fillAndVerify } from '../../utils/forms';
 
 export class SignUpModal {
   readonly root: Locator;
@@ -17,8 +18,10 @@ export class SignUpModal {
   /** Submits the form and returns the alert text. */
   async register(username: string, password: string): Promise<string> {
     await expect(this.usernameInput).toBeVisible();
-    await this.usernameInput.fill(username);
-    await this.passwordInput.fill(password);
+    await fillAndVerify([
+      [this.usernameInput, username],
+      [this.passwordInput, password],
+    ]);
     return acceptNextDialog(this.page, () => this.submitButton.click());
   }
 }

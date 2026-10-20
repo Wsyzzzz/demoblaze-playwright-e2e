@@ -120,14 +120,17 @@ test.describe('Place order', { tag: TAG.REGRESSION }, () => {
   );
 
   test('CRT-028 Verify a guest can place an order', async ({
+    homePage,
     productPage,
     cartPage,
     placeOrderModal,
     orderConfirmation,
     navBar,
   }) => {
-    await productPage.open(nokiaLumia1520);
+    // Guests start on Home: that is where DemoBlaze creates the guest id cookie (see CRT-049).
+    await homePage.open();
     await navBar.expectLoggedOut();
+    await homePage.openProduct(nokiaLumia1520);
     await productPage.addToCart();
     await cartPage.open();
     await cartPage.expectContents([nokiaLumia1520]);

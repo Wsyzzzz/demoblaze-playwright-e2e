@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { CheckoutDetails } from '../../data/checkout';
 import { acceptNextDialog } from '../../utils/dialogs';
+import { fillAndVerify } from '../../utils/forms';
 
 export class PlaceOrderModal {
   readonly root: Locator;
@@ -36,9 +37,8 @@ export class PlaceOrderModal {
   /** Fills every field so no value is left over from a previous attempt. */
   async fill(details: CheckoutDetails): Promise<void> {
     await expect(this.fields.name).toBeVisible();
-    for (const [key, locator] of Object.entries(this.fields) as [keyof CheckoutDetails, Locator][]) {
-      await locator.fill(details[key]);
-    }
+    const entries = Object.entries(this.fields) as [keyof CheckoutDetails, Locator][];
+    await fillAndVerify(entries.map(([key, locator]) => [locator, details[key]] as const));
   }
 
   async purchase(): Promise<void> {

@@ -2,7 +2,7 @@ import { ALERT } from '@constants/messages';
 import { TAG } from '@constants/tags';
 import { PRODUCTS } from '@data/products';
 import { expect, test } from '@fixtures';
-import { DEFECT } from '@fixtures/known-defect';
+import { DEFECT, expectKnownDefect, knownDefectDetails } from '@fixtures/known-defect';
 
 const { samsungGalaxyS6, nokiaLumia1520 } = PRODUCTS;
 
@@ -33,9 +33,11 @@ test.describe('Add to cart', { tag: TAG.REGRESSION }, () => {
         description: `${DEFECT.GUEST_ALERT_TEXT.id}: ${DEFECT.GUEST_ALERT_TEXT.summary}`,
       },
     },
-    async ({ productPage, cartPage, navBar }) => {
-      await productPage.open(nokiaLumia1520);
+    async ({ homePage, productPage, cartPage, navBar }) => {
+      // Guests start on Home: that is where DemoBlaze creates the guest id cookie (see CRT-049).
+      await homePage.open();
       await navBar.expectLoggedOut();
+      await homePage.openProduct(nokiaLumia1520);
 
       const message = await productPage.addToCart();
       expect(message).toMatch(/^Product added\.?$/);
@@ -62,4 +64,20 @@ test.describe('Add to cart', { tag: TAG.REGRESSION }, () => {
     await cartPage.open();
     await cartPage.expectContents([samsungGalaxyS6, nokiaLumia1520]);
   });
+
+  test(
+    'CRT-049 Verify a guest who opens a product page directly gets a private cart',
+    knownDefectDetails(DEFECT.SHARED_GUEST_CART, [TAG.SECURITY]),
+    async ({ productPage, page }) => {
+      expectKnownDefect(DEFECT.SHARED_GUEST_CART);
+
+      // A guest arriving from a search result or shared link never visits the Home page.
+      const addToCartRequest = page.waitForRequest((r) => r.url().endsWith('/addtocart'));
+      await productPage.open(nokiaLumia1520);
+      await productPage.addToCart();
+
+      const { cookie } = (await addToCartRequest).postDataJSON() as { cookie: string };
+      expect(cookie, 'guest cart must be keyed by a unique guest id').toMatch(/(^|;\s*)user=[0-9a-f-]{36}/);
+    },
+  );
 });

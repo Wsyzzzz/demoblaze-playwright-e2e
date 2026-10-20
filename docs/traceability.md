@@ -3,7 +3,7 @@
 Every test case in [`DemoBlaze_Test_Cases.xlsx`](DemoBlaze_Test_Cases.xlsx) and what happened to it in this framework.
 Test titles in the code start with the same ID, so a failing test in any report maps straight back to its test case.
 
-**82 test cases:** 32 automated (6 as known-defect tests) · 25 backlog · 25 manual
+**83 test cases:** 33 automated (7 as known-defect tests) · 25 backlog · 25 manual
 
 ## Login
 
@@ -30,7 +30,7 @@ Test titles in the code start with the same ID, so a failing test in any report 
 | LGN-019 | Verify double-clicking 'Log in' logs the user in once                | P3       | Functional | Manual                   | Timing race (double-click) – non-deterministic, would be flaky                            |
 | LGN-020 | Verify pressing Enter in the Password field submits the login        | P3       | Usability  | Manual                   | Keyboard UX, assumed requirement – manual exploratory check                               |
 | LGN-021 | Verify the Login modal clears its fields after Close                 | P3       | Usability  | Manual                   | UX, assumed requirement – manual exploratory check                                        |
-| LGN-022 | Verify login works at mobile width through the collapsed menu        | P2       | Usability  | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
+| LGN-022 | Verify login works at mobile width                                   | P2       | Usability  | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
 | LGN-023 | Verify the session persists after a page refresh                     | P1       | Functional | Automated                | `tests/ui/auth/session.spec.ts`                                                           |
 | LGN-024 | Verify the logged-in state is shown on every page                    | P2       | Functional | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
 | LGN-025 | Verify a tampered auth cookie is rejected                            | P2       | Security   | Manual                   | DevTools cookie tampering – manual security check (automatable later)                     |
@@ -96,3 +96,4 @@ Test titles in the code start with the same ID, so a failing test in any report 
 | CRT-046 | Verify POST /addtocart stores the item returned by /viewcart                    | P2       | API         | Automated                | `tests/api/cart.api.spec.ts`                                            |
 | CRT-047 | Verify POST /deleteitem removes the item from the cart                          | P3       | API         | Automated                | `tests/api/cart.api.spec.ts`                                            |
 | CRT-048 | Verify POST /view returns 404 for an unknown product                            | P3       | API         | Automated (known defect) | `tests/api/product.api.spec.ts`                                         |
+| CRT-049 | Verify a guest who opens a product page directly gets a private cart            | P1       | Security    | Automated (known defect) | `tests/ui/cart/add-to-cart.spec.ts`                                     |

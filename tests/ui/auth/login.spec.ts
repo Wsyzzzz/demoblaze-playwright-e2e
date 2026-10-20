@@ -68,8 +68,9 @@ test.describe('Login on mobile', { tag: [TAG.REGRESSION, TAG.MOBILE] }, () => {
     test.skip(!isMobile, 'Runs only in the mobile-chrome project');
 
     await homePage.open();
+    // Mobile layout: the hamburger toggle is shown. (DemoBlaze's menu itself never collapses,
+    // so NavBar.expandIfCollapsed() only clicks the toggle when the menu is actually hidden.)
     await expect(navBar.menuToggle).toBeVisible();
-    await expect(navBar.menu).toBeHidden();
 
     await navBar.openLogin();
     await loginModal.logIn(testUser.username, testUser.password);

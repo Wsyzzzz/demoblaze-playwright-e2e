@@ -6,8 +6,8 @@ The framework runs UI, API, security and performance checks from one code base, 
 
 |                  |                                                                                                                  |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Test cases**   | 82 documented in [`docs/DemoBlaze_Test_Cases.xlsx`](docs/DemoBlaze_Test_Cases.xlsx)                              |
-| **Automated**    | 32 test cases → 85 test runs across 6 Playwright projects                                                        |
+| **Test cases**   | 83 documented in [`docs/DemoBlaze_Test_Cases.xlsx`](docs/DemoBlaze_Test_Cases.xlsx)                              |
+| **Automated**    | 33 test cases → 88 test runs across 6 Playwright projects                                                        |
 | **Traceability** | [`docs/traceability.md`](docs/traceability.md): every case with its spec file, or the reason it is not automated |
 | **Stack**        | Playwright 1.59 · TypeScript 5.9 · Node.js ≥ 20 · ESLint · Prettier · k6 (optional)                              |
 
@@ -143,7 +143,7 @@ demoblaze-playwright-e2e/
 ├── perf/k6/api-load.js           # Optional load test (k6)
 ├── scripts/ci-summary.mjs        # Writes the GitHub Actions job summary
 └── docs/
-    ├── DemoBlaze_Test_Cases.xlsx # Test case suite (82 cases) + potential defects
+    ├── DemoBlaze_Test_Cases.xlsx # Test case suite (83 cases) + potential defects
     └── traceability.md           # Test case → spec file mapping
 ```
 
@@ -201,17 +201,20 @@ The exceptions are deliberate:
 
 - **CRT-025**, the business-critical journey from the brief, runs **fully through the UI**.
 - **LGN-004** and **LGN-027** log in through the UI, because the login itself (or the cookie the site sets) is what they test.
+- **Guest journeys start on the Home page**, because that is where DemoBlaze creates the guest id. Landing on a product page directly is covered separately by CRT-049, which exposed defect PD-22.
 
 ### 4.6 Deterministic waits, never `waitForTimeout`
 
 DemoBlaze loads cart rows asynchronously and reloads pages after login and delete. Instead of sleeping, the framework waits for the **real signal**:
 
-| Situation        | What the framework waits for                                                                             |
-| ---------------- | -------------------------------------------------------------------------------------------------------- |
-| Cart page        | The `/viewcart` response, before asserting, so an "empty cart" check cannot pass early                   |
-| Login            | The page `load` event the site triggers                                                                  |
-| Delete from cart | The `/viewcart` call after the reload                                                                    |
-| Order placed     | Server-side cart state (`expect.poll`), because the site empties the cart with a fire-and-forget request |
+| Situation        | What the framework waits for                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cart page        | The `/viewcart` response, before asserting, so an "empty cart" check cannot pass early                                                                  |
+| Login            | The page `load` event the site triggers                                                                                                                 |
+| Delete from cart | The `/viewcart` call after the reload                                                                                                                   |
+| Order placed     | Server-side cart state (`expect.poll`), because the site empties the cart with a fire-and-forget request                                                |
+| Purchase dialog  | The SweetAlert `visible` class: its OK button only works once the opening animation has finished                                                        |
+| Modal forms      | Every typed value is verified (`fillAndVerify`), because Bootstrap moves focus when a modal finishes opening and can interrupt typing on Firefox/WebKit |
 
 Native `alert()` dialogs are handled by `acceptNextDialog()`. It registers the handler before the click, because some DemoBlaze alerts fire synchronously inside the click handler.
 
@@ -251,7 +254,7 @@ Assertions are scoped to the test case's objective. For example, the end-to-end 
 
 ## 5. What is automated and why
 
-Every one of the 82 test cases was assessed on four criteria:
+Every one of the 83 test cases was assessed on four criteria:
 
 1. **Regression value:** will this protect us on every release?
 2. **Determinism:** is there a single stable expected result?
@@ -261,7 +264,7 @@ Every one of the 82 test cases was assessed on four criteria:
 | Decision                      | Cases | Typical examples                                                                                                                                                |
 | ----------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Automated**                 | 26    | Login (valid/invalid/required fields), session, logout, add to cart, delete, full checkout, checkout validation, API contract, mobile login, performance budget |
-| **Automated as known defect** | 6     | Wrong order date, empty-cart order, predictable token, cookie flags, HTTP 200 for errors                                                                        |
+| **Automated as known defect** | 7     | Wrong order date, empty-cart order, shared guest cart, predictable token, cookie flags, HTTP 200 for errors                                                     |
 | **Backlog**                   | 25    | Automatable but lower priority: persistence after re-login, cart isolation between users, category/pagination, 10-item total                                    |
 | **Manual**                    | 25    | See reasons below                                                                                                                                               |
 
@@ -336,16 +339,17 @@ Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config
 
 ## 9. Known defects
 
-Found during manual testing and kept as expected-to-fail automated tests (full list of 21 potential defects in the workbook):
+Found during manual and automated testing, and kept as expected-to-fail automated tests (full list of 22 potential defects in the workbook):
 
-| Defect | Summary                                                                        | Test             |
-| ------ | ------------------------------------------------------------------------------ | ---------------- |
-| PD-01  | Order can be placed with an empty cart ("Amount: 0 USD")                       | CRT-029          |
-| PD-02  | Confirmation date shows the previous month (0-based month)                     | CRT-027          |
-| PD-08  | Auth cookie `tokenp_` has no Secure/HttpOnly flags                             | LGN-027          |
-| PD-18  | Auth token is Base64 of username + number, so it is predictable                | LGN-026          |
-| PD-19  | API returns HTTP 200 for errors (should be 401/404)                            | LGN-034, CRT-048 |
-| PD-06  | Guest alert text "Product added" lacks the full stop (annotated, not asserted) | CRT-007          |
+| Defect | Summary                                                                                                                                                   | Test             |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| PD-01  | Order can be placed with an empty cart ("Amount: 0 USD")                                                                                                  | CRT-029          |
+| PD-22  | Guests who open a product page directly all share **one cart** (empty guest id). Found by the first automated run, which saw 121–134 other people's items | CRT-049          |
+| PD-02  | Confirmation date shows the previous month (0-based month)                                                                                                | CRT-027          |
+| PD-08  | Auth cookie `tokenp_` has no Secure/HttpOnly flags                                                                                                        | LGN-027          |
+| PD-18  | Auth token is Base64 of username + number, so it is predictable                                                                                           | LGN-026          |
+| PD-19  | API returns HTTP 200 for errors (should be 401/404)                                                                                                       | LGN-034, CRT-048 |
+| PD-06  | Guest alert text "Product added" lacks the full stop (annotated, not asserted)                                                                            | CRT-007          |
 
 ---
 

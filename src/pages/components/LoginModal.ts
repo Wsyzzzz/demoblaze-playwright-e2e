@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { acceptNextDialog } from '../../utils/dialogs';
+import { fillAndVerify } from '../../utils/forms';
 
 export class LoginModal {
   readonly root: Locator;
@@ -16,8 +17,10 @@ export class LoginModal {
 
   async fill(username: string, password: string): Promise<void> {
     await expect(this.usernameInput).toBeVisible();
-    await this.usernameInput.fill(username);
-    await this.passwordInput.fill(password);
+    await fillAndVerify([
+      [this.usernameInput, username],
+      [this.passwordInput, password],
+    ]);
   }
 
   /** Successful login reloads the page; callers assert the logged-in state via NavBar. */
