@@ -1,0 +1,130 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 18 * * *' # 02:00 Malaysia time – nightly full regression
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Suite to run
+        type: choice
+        options: [smoke, regression, perf]
+        default: regression
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: 'true'
+  NODE_VERSION: '22'
+
+jobs:
+  quality:
+    name: Lint, format & typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+
+  smoke:
+    name: Smoke (chromium + API)
+    needs: quality
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || inputs.suite == 'smoke'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:smoke
+      - name: Job summary
+        if: always()
+        run: node scripts/ci-summary.mjs "Smoke" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-report
+          path: reports/
+          retention-days: 14
+
+  regression:
+    name: Regression (${{ matrix.project }})
+    needs: quality
+    if: github.event_name == 'schedule' || inputs.suite == 'regression'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
+          - project: mobile-chrome
+            browser: chromium
+          - project: api
+            browser: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Install browser
+        if: matrix.browser != ''
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx playwright test --project=${{ matrix.project }}
+      - name: Job summary
+        if: always()
+        run: node scripts/ci-summary.mjs "Regression – ${{ matrix.project }}" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-report-${{ matrix.project }}
+          path: reports/
+          retention-days: 14
+
+  perf:
+    name: Performance budgets
+    needs: quality
+    if: github.event_name == 'schedule' || inputs.suite == 'perf'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:perf
+      - name: Job summary
+        if: always()
+        run: node scripts/ci-summary.mjs "Performance" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-report
+          path: reports/
+          retention-days: 14

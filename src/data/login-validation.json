@@ -1,0 +1,23 @@
+[
+  {
+    "id": "LGN-008",
+    "title": "Verify login is blocked when both fields are empty",
+    "priority": "P1",
+    "username": "",
+    "password": ""
+  },
+  {
+    "id": "LGN-009",
+    "title": "Verify login is blocked when only the username is empty",
+    "priority": "P2",
+    "username": "",
+    "password": "Test@1234"
+  },
+  {
+    "id": "LGN-010",
+    "title": "Verify login is blocked when only the password is empty",
+    "priority": "P2",
+    "username": "{TEST_USER}",
+    "password": ""
+  }
+]

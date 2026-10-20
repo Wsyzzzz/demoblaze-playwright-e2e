@@ -1,0 +1,98 @@
+# Traceability matrix
+
+Every test case in [`DemoBlaze_Test_Cases.xlsx`](DemoBlaze_Test_Cases.xlsx) and what happened to it in this framework.
+Test titles in the code start with the same ID, so a failing test in any report maps straight back to its test case.
+
+**82 test cases:** 32 automated (6 as known-defect tests) · 25 backlog · 25 manual
+
+## Login
+
+| ID      | Test case                                                            | Priority | Type       | Decision                 | Spec file / reason                                                                        |
+| ------- | -------------------------------------------------------------------- | -------- | ---------- | ------------------------ | ----------------------------------------------------------------------------------------- |
+| LGN-001 | Verify a new user can sign up with a unique username                 | P1       | Functional | Automated                | `tests/ui/auth/signup.spec.ts`                                                            |
+| LGN-002 | Verify sign up is rejected for an existing username                  | P2       | Functional | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
+| LGN-003 | Verify the Login modal opens with the expected fields                | P3       | Functional | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
+| LGN-004 | Verify a user can log in with valid credentials                      | P1       | Functional | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
+| LGN-005 | Verify logging in from the Cart page keeps the user on the Cart page | P3       | Functional | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
+| LGN-006 | Verify login is rejected with a wrong password                       | P1       | Functional | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
+| LGN-007 | Verify login is rejected for an unregistered username                | P1       | Functional | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
+| LGN-008 | Verify login is blocked when both fields are empty                   | P1       | Functional | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
+| LGN-009 | Verify login is blocked when only the username is empty              | P2       | Functional | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
+| LGN-010 | Verify login is blocked when only the password is empty              | P2       | Functional | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
+| LGN-011 | Verify whitespace-only username and password are treated as empty    | P3       | Functional | Manual                   | Expected result is an assumed requirement – confirm with PO before automating             |
+| LGN-012 | Verify leading and trailing spaces in the username are trimmed       | P3       | Functional | Manual                   | Assumed requirement – confirm with PO before automating                                   |
+| LGN-013 | Verify username matching is not case-sensitive                       | P3       | Functional | Manual                   | Assumed requirement – confirm with PO before automating                                   |
+| LGN-014 | Verify password matching is case-sensitive                           | P2       | Security   | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
+| LGN-015 | Verify a password with special and Unicode characters works          | P3       | Functional | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
+| LGN-016 | Verify a 300-character username is handled without errors            | P3       | Functional | Manual                   | Needs human judgement of console errors and page usability                                |
+| LGN-017 | Verify SQL-injection input does not bypass login                     | P2       | Security   | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
+| LGN-018 | Verify repeated failed logins trigger a lockout or rate limit        | P2       | Security   | Manual                   | Destructive: would lock shared accounts on a public site; belongs in a security test plan |
+| LGN-019 | Verify double-clicking 'Log in' logs the user in once                | P3       | Functional | Manual                   | Timing race (double-click) – non-deterministic, would be flaky                            |
+| LGN-020 | Verify pressing Enter in the Password field submits the login        | P3       | Usability  | Manual                   | Keyboard UX, assumed requirement – manual exploratory check                               |
+| LGN-021 | Verify the Login modal clears its fields after Close                 | P3       | Usability  | Manual                   | UX, assumed requirement – manual exploratory check                                        |
+| LGN-022 | Verify login works at mobile width through the collapsed menu        | P2       | Usability  | Automated                | `tests/ui/auth/login.spec.ts`                                                             |
+| LGN-023 | Verify the session persists after a page refresh                     | P1       | Functional | Automated                | `tests/ui/auth/session.spec.ts`                                                           |
+| LGN-024 | Verify the logged-in state is shown on every page                    | P2       | Functional | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
+| LGN-025 | Verify a tampered auth cookie is rejected                            | P2       | Security   | Manual                   | DevTools cookie tampering – manual security check (automatable later)                     |
+| LGN-026 | Verify the auth token cannot be predicted from the username          | P1       | Security   | Automated (known defect) | `tests/security/session-security.spec.ts`                                                 |
+| LGN-027 | Verify the auth cookie has the Secure and HttpOnly flags             | P2       | Security   | Automated (known defect) | `tests/security/session-security.spec.ts`                                                 |
+| LGN-028 | Verify login requests are sent over HTTPS                            | P2       | Security   | Manual                   | Transport-security inspection – better covered by a DAST/proxy tool                       |
+| LGN-029 | Verify the password is not sent in a reversible encoding             | P2       | Security   | Manual                   | Request-body inspection – better covered by a DAST/proxy tool                             |
+| LGN-030 | Verify a user can log out                                            | P1       | Functional | Automated                | `tests/ui/auth/session.spec.ts`                                                           |
+| LGN-031 | Verify browser Back after logout does not restore the session        | P2       | Security   | Backlog                  | Automatable – lower priority for the demo; next sprint                                    |
+| LGN-032 | Verify POST /login returns a token for valid credentials             | P2       | API        | Automated                | `tests/api/auth.api.spec.ts`                                                              |
+| LGN-033 | Verify POST /login rejects a wrong password                          | P2       | API        | Automated                | `tests/api/auth.api.spec.ts`                                                              |
+| LGN-034 | Verify POST /check returns 401 for an invalid token                  | P3       | API        | Automated (known defect) | `tests/api/auth.api.spec.ts`                                                              |
+
+## Cart
+
+| ID      | Test case                                                                       | Priority | Type        | Decision                 | Spec file / reason                                                      |
+| ------- | ------------------------------------------------------------------------------- | -------- | ----------- | ------------------------ | ----------------------------------------------------------------------- |
+| CRT-001 | Verify the product page shows name, price and description                       | P2       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-002 | Verify product prices are consistent from the home page to checkout             | P1       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-003 | Verify an unknown product ID shows a 'not found' page                           | P3       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-004 | Verify the product page without an ID shows a friendly error                    | P3       | Functional  | Manual                   | Console-error judgement – manual (automatable later)                    |
+| CRT-005 | Verify a product from the Laptops category can be added to the cart             | P2       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-006 | Verify a logged-in user can add a product to the cart                           | P1       | Functional  | Automated                | `tests/ui/cart/add-to-cart.spec.ts`                                     |
+| CRT-007 | Verify a guest can add a product to the cart                                    | P2       | Functional  | Automated                | `tests/ui/cart/add-to-cart.spec.ts`                                     |
+| CRT-008 | Verify multiple different products can be added                                 | P1       | Functional  | Automated                | `tests/ui/cart/add-to-cart.spec.ts`                                     |
+| CRT-009 | Verify adding the same product twice creates two rows                           | P2       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-010 | Verify every 'Product added.' alert results in a saved item                     | P2       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-011 | Verify rapid repeated 'Add to cart' clicks are all saved                        | P3       | Functional  | Manual                   | Timing race (rapid clicks) – non-deterministic, would be flaky          |
+| CRT-012 | Verify an empty cart shows an empty-cart message                                | P3       | Usability   | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-013 | Verify deleting one item updates the cart and Total                             | P1       | Functional  | Automated                | `tests/ui/cart/cart-management.spec.ts`                                 |
+| CRT-014 | Verify deleting all items empties the cart                                      | P2       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-015 | Verify Place Order shows the updated Total after a delete                       | P2       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-016 | Verify the cart Total is correct with 10 items                                  | P3       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-017 | Verify cart contents persist after a page refresh                               | P2       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-018 | Verify the Cart page and Place Order form are usable at mobile width            | P3       | Usability   | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-019 | Verify the Cart page loads within 3 seconds                                     | P3       | Performance | Automated                | `tests/perf/cart-page.perf.spec.ts`                                     |
+| CRT-020 | Verify the cart is kept after logging out and back in                           | P2       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-021 | Verify a user's cart is not shown after logout                                  | P2       | Security    | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-022 | Verify a user cannot see another user's cart items                              | P1       | Security    | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-023 | Verify guest cart items are kept after logging in                               | P3       | Functional  | Manual                   | Assumed requirement (cart merge) – confirm with PO                      |
+| CRT-024 | Verify the Place Order form opens with the cart Total                           | P2       | Functional  | Automated                | `tests/ui/checkout/place-order.spec.ts`                                 |
+| CRT-025 | Verify a logged-in user can place an order with valid details                   | P1       | Functional  | Automated                | `tests/ui/checkout/place-order.spec.ts`                                 |
+| CRT-026 | Verify the cart is empty after a successful order                               | P1       | Functional  | Automated                | `tests/ui/checkout/place-order.spec.ts`                                 |
+| CRT-027 | Verify the confirmation shows today's date                                      | P2       | Functional  | Automated (known defect) | `tests/ui/checkout/place-order.spec.ts`                                 |
+| CRT-028 | Verify a guest can place an order                                               | P2       | Functional  | Automated                | `tests/ui/checkout/place-order.spec.ts`                                 |
+| CRT-029 | Verify an order cannot be placed with an empty cart                             | P1       | Functional  | Automated (known defect) | `tests/ui/checkout/place-order.spec.ts`                                 |
+| CRT-030 | Verify the Amount matches the items bought when the cart changed in another tab | P1       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-031 | Verify closing the Place Order form does not place an order                     | P3       | Functional  | Backlog                  | Automatable – lower priority for the demo; next sprint                  |
+| CRT-032 | Verify 'Purchase' is blocked when all fields are empty                          | P1       | Functional  | Automated                | `tests/ui/checkout/order-validation.spec.ts`                            |
+| CRT-033 | Verify 'Purchase' is blocked when Credit card is empty                          | P2       | Functional  | Automated                | `tests/ui/checkout/order-validation.spec.ts`                            |
+| CRT-034 | Verify 'Purchase' is blocked when Name is empty                                 | P2       | Functional  | Automated                | `tests/ui/checkout/order-validation.spec.ts`                            |
+| CRT-035 | Verify Country, City, Month and Year are required                               | P2       | Functional  | Manual                   | Validation does not exist yet – automate once the requirement is agreed |
+| CRT-036 | Verify a non-numeric card number is rejected                                    | P2       | Functional  | Manual                   | Validation does not exist yet – automate once the requirement is agreed |
+| CRT-037 | Verify a card number with too few digits is rejected                            | P3       | Functional  | Manual                   | Validation does not exist yet – automate once the requirement is agreed |
+| CRT-038 | Verify an invalid month is rejected                                             | P3       | Functional  | Manual                   | Validation does not exist yet – automate once the requirement is agreed |
+| CRT-039 | Verify an expired card year is rejected                                         | P3       | Functional  | Manual                   | Validation does not exist yet – automate once the requirement is agreed |
+| CRT-040 | Verify whitespace-only Name and Credit card are rejected                        | P3       | Functional  | Manual                   | Validation does not exist yet – automate once the requirement is agreed |
+| CRT-041 | Verify a 500-character Name does not break the confirmation                     | P3       | Usability   | Manual                   | Visual layout check – manual or visual-regression tool                  |
+| CRT-042 | Verify HTML entered in Name is shown as plain text                              | P2       | Security    | Manual                   | XSS probing – better covered by a DAST tool                             |
+| CRT-043 | Verify double-clicking 'Purchase' creates only one order                        | P3       | Functional  | Manual                   | Timing race (double-click) – non-deterministic, would be flaky          |
+| CRT-044 | Verify the card number is masked while typing                                   | P2       | Security    | Manual                   | Security UX, assumed requirement – manual                               |
+| CRT-045 | Verify the confirmation shows only the last 4 card digits                       | P2       | Security    | Manual                   | Security UX, assumed requirement – manual                               |
+| CRT-046 | Verify POST /addtocart stores the item returned by /viewcart                    | P2       | API         | Automated                | `tests/api/cart.api.spec.ts`                                            |
+| CRT-047 | Verify POST /deleteitem removes the item from the cart                          | P3       | API         | Automated                | `tests/api/cart.api.spec.ts`                                            |
+| CRT-048 | Verify POST /view returns 404 for an unknown product                            | P3       | API         | Automated (known defect) | `tests/api/product.api.spec.ts`                                         |

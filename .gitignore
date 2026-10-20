@@ -1,0 +1,18 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Test output
+reports/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
