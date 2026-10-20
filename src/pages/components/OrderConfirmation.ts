@@ -23,8 +23,18 @@ export class OrderConfirmation {
     this.okButton = this.root.getByRole('button', { name: 'OK' });
   }
 
-  async read(): Promise<OrderReceipt> {
+  /**
+   * SweetAlert only wires up its buttons once the opening animation has finished and the
+   * dialog has the `visible` class. Clicking OK earlier just closes the dialog without
+   * running the "go to Home" callback, so always wait for this state first.
+   */
+  async waitUntilReady(): Promise<void> {
     await expect(this.title).toHaveText(PURCHASE_CONFIRMATION_TITLE);
+    await expect(this.root).toHaveClass(/(^|\s)visible(\s|$)/);
+  }
+
+  async read(): Promise<OrderReceipt> {
+    await this.waitUntilReady();
     const text = await this.details.innerText();
     const field = (label: string): string =>
       text.match(new RegExp(`${label}:[ \\t]*(.*)`))?.[1]?.trim() ?? '';
@@ -38,6 +48,7 @@ export class OrderConfirmation {
   }
 
   async confirm(): Promise<void> {
+    await this.waitUntilReady();
     await Promise.all([this.page.waitForURL(/\/index\.html/), this.okButton.click()]);
   }
 }
