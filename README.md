@@ -16,16 +16,17 @@ The framework runs UI, API, security and performance checks from one code base, 
 ## Contents
 
 1. [Quick start](#1-quick-start)
-2. [Running the tests](#2-running-the-tests)
-3. [Project structure](#3-project-structure)
-4. [Design decisions and rationale](#4-design-decisions-and-rationale)
-5. [What is automated and why](#5-what-is-automated-and-why)
-6. [Reports](#6-reports)
-7. [CI/CD](#7-cicd)
-8. [Configuration](#8-configuration)
-9. [Known defects](#9-known-defects)
-10. [Conventions for contributors](#10-conventions-for-contributors)
-11. [Roadmap](#11-roadmap)
+2. [Run the demo](#2-run-the-demo)
+3. [Running the tests](#3-running-the-tests)
+4. [Project structure](#4-project-structure)
+5. [Design decisions and rationale](#5-design-decisions-and-rationale)
+6. [What is automated and why](#6-what-is-automated-and-why)
+7. [Reports](#7-reports)
+8. [CI/CD](#8-cicd)
+9. [Configuration](#9-configuration)
+10. [Known defects](#10-known-defects)
+11. [Conventions for contributors](#11-conventions-for-contributors)
+12. [Roadmap](#12-roadmap)
 
 ---
 
@@ -41,15 +42,52 @@ npm ci                          # install exact dependency versions
 npx playwright install          # download Chromium, Firefox and WebKit
 cp .env.example .env            # optional: defaults work without changes
 
+npm run demo                    # the two demo flows from the brief, in a visible browser
 npm run test:smoke              # critical path: 7 tests (5 UI on Chromium + 2 API)
 npm run report                  # open the HTML report
 ```
 
-No credentials are needed. By default each test worker **signs up its own throwaway account** through the API (see [4.4](#44-test-data-isolation-one-account-per-worker)).
+No credentials are needed. By default each test worker **signs up its own throwaway account** through the API (see [5.4](#54-test-data-isolation-one-account-per-worker)).
 
 ---
 
-## 2. Running the tests
+## 2. Run the demo
+
+The challenge asks for a demo of two flows. Each command opens a **visible Chrome window** and runs the tests **one at a time** so you can follow along on [demoblaze.com](https://www.demoblaze.com/).
+
+```bash
+npm run demo              # LGN-004 login + CRT-025 add to cart and place an order
+npm run demo:edge-cases   # wrong password, unknown user, empty fields, empty-cart order
+npm run report            # open the HTML report with every step
+```
+
+| Test        | Flow                                               | What it validates                                                                                                                                                                                                                                            |
+| ----------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **LGN-004** | Logging in with valid credentials                  | Login modal closes; navbar shows `Welcome <username>` and `Log out`; `Log in` / `Sign up` are hidden                                                                                                                                                         |
+| **CRT-025** | Add to cart, then place an order (full UI journey) | Adds Samsung galaxy s6 ($360) and Nokia lumia 1520 ($820) from the Home page; cart lists both rows with Total **1180**; order form shows `Total: 1180`; receipt shows a numeric Id, `Amount: 1180 USD` and the card and name entered; **OK** returns to Home |
+
+Edge cases shown by `npm run demo:edge-cases`:
+
+| Test    | Scenario                             | Expected handling                                                                                                                                                      |
+| ------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LGN-006 | Wrong password                       | Alert `Wrong password.`; user stays logged out                                                                                                                         |
+| LGN-007 | Unregistered username                | Alert `User does not exist.`                                                                                                                                           |
+| LGN-008 | Both login fields empty              | Alert `Please fill out Username and Password.`; no login request sent                                                                                                  |
+| CRT-032 | Purchase with all order fields empty | Alert `Please fill out Name and Creditcard.`; no order, cart unchanged                                                                                                 |
+| CRT-029 | Order with an empty cart             | **Known defect PD-01**: the site accepts it (`Amount: 0 USD`). The test asserts the correct behaviour and is marked expected-to-fail ([section 10](#10-known-defects)) |
+
+Prefer to type the commands yourself? The npm scripts are shortcuts for:
+
+```bash
+npx playwright test --grep "LGN-004|CRT-025" --project=chromium --headed --workers=1
+npx playwright test --grep "LGN-006|LGN-007|LGN-008|CRT-029|CRT-032" --project=chromium --headed --workers=1
+```
+
+To step through a demo test line by line: `npx playwright test --grep "CRT-025" --project=chromium --debug`.
+
+---
+
+## 3. Running the tests
 
 | Goal                                                                 | Command                                                                |
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------- |
@@ -66,15 +104,7 @@ No credentials are needed. By default each test worker **signs up its own throwa
 | One test case by ID                                                  | `npx playwright test --grep "CRT-025"`                                 |
 | Load test (needs [k6](https://k6.io/docs/get-started/installation/)) | `npm run perf:load`                                                    |
 
-**Demo flows from the brief:**
-
-```bash
-# Logging in with valid credentials
-npx playwright test --grep "LGN-004" --project=chromium --headed
-
-# Add to cart, then place an order (full UI journey)
-npx playwright test --grep "CRT-025" --project=chromium --headed
-```
+The demo flows from the brief have their own section: [2. Run the demo](#2-run-the-demo).
 
 **Running against your own account** instead of throwaway users:
 
@@ -97,7 +127,7 @@ npm run typecheck     # tsc --noEmit
 
 ---
 
-## 3. Project structure
+## 4. Project structure
 
 ```
 demoblaze-playwright-e2e/
@@ -149,14 +179,14 @@ demoblaze-playwright-e2e/
 
 ---
 
-## 4. Design decisions and rationale
+## 5. Design decisions and rationale
 
-### 4.1 Playwright + TypeScript
+### 5.1 Playwright + TypeScript
 
 - **Playwright** has one API for Chromium, Firefox and WebKit plus device emulation, which covers the cross-browser/platform requirement. It also has built-in API testing, auto-waiting (fewer flaky waits), parallel execution and trace-based debugging.
 - **TypeScript** catches mistakes at compile time: wrong fixture names, mistyped data fields, renamed page methods. That matters once a suite grows past a few files.
 
-### 4.2 Page Object Model with components
+### 5.2 Page Object Model with components
 
 Each page exposes **locators and user-level actions** (`addToCart()`, `openPlaceOrder()`), and the specs read like test cases. UI parts that appear on several pages (navigation bar, login modal, order form, confirmation dialog) are **components**, so a UI change is fixed in exactly one place.
 
@@ -166,7 +196,7 @@ Locator strategy, in order of preference:
 2. Role-based locators scoped to a container (`root.getByRole('button', { name: 'Purchase' })`).
 3. No XPath, and no positional selectors where a meaningful one exists.
 
-### 4.3 Fixtures instead of setup code in tests
+### 5.3 Fixtures instead of setup code in tests
 
 `src/fixtures/index.ts` extends Playwright's `test` so specs simply ask for what they need:
 
@@ -181,7 +211,7 @@ test('CRT-013 ...', async ({ session, api, cartPage }) => { ... });
 | `testUser`                              | **worker** | An account owned by this worker for the whole run                                         |
 | `session`                               | test       | `testUser` logged in **via the API**, cart emptied, auth cookie injected into the browser |
 
-### 4.4 Test data isolation: one account per worker
+### 5.4 Test data isolation: one account per worker
 
 DemoBlaze stores the cart **per user on the server**. If parallel tests shared one account, they would see each other's cart items and fail at random.
 
@@ -193,7 +223,7 @@ So each Playwright worker signs up its **own throwaway account** (`qa_w<n>_<time
 
 `USER_STRATEGY=env` remains available for running against a named account.
 
-### 4.5 API-first arrange, UI for the behaviour under test
+### 5.5 API-first arrange, UI for the behaviour under test
 
 A test should spend its time on the behaviour it checks. Preconditions such as logging in or putting two items in the cart are done **through the API** (milliseconds, no UI flakiness). The UI is used for the action and assertions under test.
 
@@ -203,7 +233,7 @@ The exceptions are deliberate:
 - **LGN-004** and **LGN-027** log in through the UI, because the login itself (or the cookie the site sets) is what they test.
 - **Guest journeys start on the Home page**, because that is where DemoBlaze creates the guest id. Landing on a product page directly is covered separately by CRT-049, which exposed defect PD-22.
 
-### 4.6 Deterministic waits, never `waitForTimeout`
+### 5.6 Deterministic waits, never `waitForTimeout`
 
 DemoBlaze loads cart rows asynchronously and reloads pages after login and delete. Instead of sleeping, the framework waits for the **real signal**:
 
@@ -218,19 +248,19 @@ DemoBlaze loads cart rows asynchronously and reloads pages after login and delet
 
 Native `alert()` dialogs are handled by `acceptNextDialog()`. It registers the handler before the click, because some DemoBlaze alerts fire synchronously inside the click handler.
 
-### 4.7 Known defects as expected failures
+### 5.7 Known defects as expected failures
 
-The manual run found real defects (see [section 9](#9-known-defects)). Their tests are written to the **correct** expected behaviour and marked `test.fail()` with the defect ID:
+The manual run found real defects (see [section 10](#10-known-defects)). Their tests are written to the **correct** expected behaviour and marked `test.fail()` with the defect ID:
 
 - CI stays **green** while the defect is open.
 - The report lists them separately with their defect ID (tag `@known-defect`).
 - When the defect is fixed, the test **passes unexpectedly and CI fails**, prompting someone to remove the marker. Defects cannot be silently fixed or silently reintroduced.
 
-### 4.8 One defect, one failing test
+### 5.8 One defect, one failing test
 
 Assertions are scoped to the test case's objective. For example, the end-to-end order test (CRT-025) does **not** check the date, because CRT-027 owns that. One defect fails one test, so the failure count reflects real problems.
 
-### 4.9 Tags and projects
+### 5.9 Tags and projects
 
 | Tag                                        | Meaning                                           |
 | ------------------------------------------ | ------------------------------------------------- |
@@ -246,13 +276,13 @@ Assertions are scoped to the test case's objective. For example, the end-to-end 
 | `api`                           | API specs once, with no browser (fast)            |
 | `perf`                          | Performance budgets on Chromium, without retries  |
 
-### 4.10 Configuration
+### 5.10 Configuration
 
 `src/config/env.ts` validates every setting at start-up and fails fast with a clear message (for example, an unknown `TEST_ENV`). Environments are defined in one map, so adding staging/UAT is a single entry. Any value can be overridden by an environment variable for CI.
 
 ---
 
-## 5. What is automated and why
+## 6. What is automated and why
 
 Every one of the 83 test cases was assessed on four criteria:
 
@@ -279,7 +309,7 @@ The full per-case decision is in [`docs/traceability.md`](docs/traceability.md) 
 
 ---
 
-## 6. Reports
+## 7. Reports
 
 Every run writes to `reports/`:
 
@@ -296,7 +326,7 @@ The performance test attaches `cart-page-metrics.json` (time to cart ready, DOMC
 
 ---
 
-## 7. CI/CD
+## 8. CI/CD
 
 ### GitHub Actions: `.github/workflows/e2e.yml`
 
@@ -312,7 +342,7 @@ manual    ─▶ workflow_dispatch: choose smoke / regression / perf
 - The **quality gate** runs first, so broken code never reaches the browser stage.
 - The regression matrix runs **one job per project in parallel** with `fail-fast: false`, so one browser's failure does not hide another's.
 - Every job publishes its report as an artifact and writes a **job summary** (passed, failed, flaky, plus known defects).
-- No secrets are required (see [4.4](#44-test-data-isolation-one-account-per-worker)).
+- No secrets are required (see [5.4](#54-test-data-isolation-one-account-per-worker)).
 
 ### Jenkins: `Jenkinsfile`
 
@@ -320,7 +350,7 @@ A declarative pipeline running in the official `mcr.microsoft.com/playwright` Do
 
 ---
 
-## 8. Configuration
+## 9. Configuration
 
 All settings live in `.env` (copy `.env.example`); environment variables override them.
 
@@ -337,7 +367,7 @@ Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config
 
 ---
 
-## 9. Known defects
+## 10. Known defects
 
 Found during manual and automated testing, and kept as expected-to-fail automated tests (full list of 22 potential defects in the workbook):
 
@@ -353,7 +383,7 @@ Found during manual and automated testing, and kept as expected-to-fail automate
 
 ---
 
-## 10. Conventions for contributors
+## 11. Conventions for contributors
 
 - **Test title** = `<TC ID> <title from the workbook>`, e.g. `CRT-025 Verify a logged-in user can place an order with valid details`.
 - **One objective per test**, with assertions focused on it.
@@ -365,7 +395,7 @@ Found during manual and automated testing, and kept as expected-to-fail automate
 
 ---
 
-## 11. Roadmap
+## 12. Roadmap
 
 - Automate the 25 backlog cases, starting with cart isolation between two users (CRT-022, P1).
 - Visual regression snapshots for the cart and confirmation dialog.
