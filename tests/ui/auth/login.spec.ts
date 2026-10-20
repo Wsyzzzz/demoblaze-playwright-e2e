@@ -228,7 +228,7 @@ test.describe('Login from other pages', { tag: TAG.REGRESSION }, () => {
     await api.addProducts(token, [PRODUCTS.samsungGalaxyS6.id]);
 
     // Guests start on Home, where DemoBlaze creates the guest id cookie. Opening cart.html
-    // directly would load the cart shared by every guest without an id (PD-22): hundreds of
+    // directly would load the cart shared by every guest without an id (PD-21): hundreds of
     // items, each fetched with its own request, which slows the API down for every test.
     await homePage.open();
     await cartPage.openFromNavBar();

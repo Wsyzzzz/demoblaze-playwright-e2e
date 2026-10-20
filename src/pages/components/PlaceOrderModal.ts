@@ -48,7 +48,7 @@ export class PlaceOrderModal {
   /**
    * Purchases and waits until DemoBlaze has emptied the cart (its own POST /deletecart call),
    * like a user who reads the receipt before pressing OK. The site does not wait for that
-   * call itself, so pressing OK sooner leaves the page and cancels it (PD-28, see CRT-050).
+   * call itself, so pressing OK sooner leaves the page and cancels it (PD-27, see CRT-050).
    */
   async purchaseAndWaitForCartClear(): Promise<void> {
     await Promise.all([

@@ -236,7 +236,7 @@ The exceptions are deliberate:
 
 - **CRT-025**, the business-critical journey from the brief, runs **fully through the UI**.
 - **LGN-004** and **LGN-027** log in through the UI, because the login itself (or the cookie the site sets) is what they test.
-- **Guest journeys start on the Home page**, because that is where DemoBlaze creates the guest id. Landing on a product page directly is covered separately by CRT-049, which exposed defect PD-22. Opening `cart.html` directly as a guest is just as harmful: it loads the shared guest cart (hundreds of items, one API call each) and slows the API down for every test running at the same time.
+- **Guest journeys start on the Home page**, because that is where DemoBlaze creates the guest id. Landing on a product page directly is covered separately by CRT-049, which exposed defect PD-21. Opening `cart.html` directly as a guest is just as harmful: it loads the shared guest cart (hundreds of items, one API call each) and slows the API down for every test running at the same time.
 
 ### 5.6 Deterministic waits, never `waitForTimeout`
 
@@ -247,7 +247,7 @@ DemoBlaze loads cart rows asynchronously and reloads pages after login and delet
 | Cart page        | The `/viewcart` response, before asserting, so an "empty cart" check cannot pass early                                                                                                             |
 | Login            | The page `load` event the site triggers                                                                                                                                                            |
 | Delete from cart | The `/viewcart` call after the reload                                                                                                                                                              |
-| Order placed     | The site's own `POST /deletecart` response before pressing OK (`purchaseAndWaitForCartClear`), then the server-side cart state (`expect.poll`). Pressing OK sooner cancels that call: defect PD-28 |
+| Order placed     | The site's own `POST /deletecart` response before pressing OK (`purchaseAndWaitForCartClear`), then the server-side cart state (`expect.poll`). Pressing OK sooner cancels that call: defect PD-27 |
 | Purchase dialog  | The SweetAlert `visible` class: its OK button only works once the opening animation has finished                                                                                                   |
 | Modal forms      | Every typed value is verified (`fillAndVerify`), because Bootstrap moves focus when a modal finishes opening and can interrupt typing on Firefox/WebKit                                            |
 
@@ -273,7 +273,7 @@ Assertions are scoped to the test case's objective. For example, the end-to-end 
 | `@regression`                              | Full suite, run nightly                           |
 | `@api` · `@security` · `@perf` · `@mobile` | Test type                                         |
 | `@known-defect`                            | Expected to fail until the linked defect is fixed |
-| `@pd-01` … `@pd-28`                        | The defect a known-defect test belongs to         |
+| `@pd-01` … `@pd-27`                        | The defect a known-defect test belongs to         |
 | `@chromium-only`                           | Left out of the Firefox and WebKit projects       |
 
 | Project                         | Runs                                                                          |
@@ -340,12 +340,12 @@ npm run report -- 20261020_134100 # open a specific run's report
 | ------------------------------------------- | ---------------------------------------------------------------------------- |
 | `CRT-025` · `cart` · `defect`               | Tests with that text in their title, file, browser or tags                   |
 | `@known-defect`                             | All expected-to-fail tests for open defects                                  |
-| `@pd-22`                                    | The tests for one defect (each known-defect test has its defect ID as a tag) |
+| `@pd-21`                                    | The tests for one defect (each known-defect test has its defect ID as a tag) |
 | `@smoke` · `@api` · `@security` · `@mobile` | Tests of that type                                                           |
 | `p:webkit` · `s:failed`                     | One browser/project · one status (passed, failed, flaky, skipped)            |
 | `@known-defect p:firefox`                   | Combine filters: all must match                                              |
 
-The same tags work on the command line, for example `npx playwright test --grep @pd-22` runs only the tests for PD-22.
+The same tags work on the command line, for example `npx playwright test --grep @pd-21` runs only the tests for PD-21.
 
 To debug a CI failure, download the report artifact and run `npx playwright show-trace <trace.zip>` to replay the test step by step: DOM, network and console included.
 
@@ -402,7 +402,7 @@ Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config
 
 ## 10. Known defects
 
-These are the 18 defects that have an expected-to-fail automated test, in ID order. The other 9 (PD-03, PD-04, PD-12, PD-13, PD-15 to PD-17, PD-20, PD-21) were found by manual testing and need manual or product-owner follow-up; all 27 are in the _Potential Defects_ sheet of the workbook. (PD-14, an item lost once after 'Product added.', was withdrawn: it never came back, manually or in CRT-010/011. Its ID is not reused.)
+These are the 18 defects that have an expected-to-fail automated test, in ID order. The other 9 (PD-03, PD-04, PD-12 to PD-15, PD-18, PD-19) were found by manual testing and need manual or product-owner follow-up; all 27 are in the _Potential Defects_ sheet of the workbook.
 
 | Defect | Summary                                                                                                                                                                                                                                                            | Test             |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
@@ -415,12 +415,12 @@ These are the 18 defects that have an expected-to-fail automated test, in ID ord
 | PD-09  | Items added as a guest are lost after logging in                                                                                                                                                                                                                   | CRT-023          |
 | PD-10  | Pressing Enter in the password field does not log in                                                                                                                                                                                                               | LGN-020          |
 | PD-11  | Login modal keeps typed values after Close                                                                                                                                                                                                                         | LGN-021          |
-| PD-18  | Auth token is Base64 of username + number, so it is predictable                                                                                                                                                                                                    | LGN-026          |
-| PD-19  | API returns HTTP 200 for errors (should be 401/404)                                                                                                                                                                                                                | LGN-034, CRT-048 |
-| PD-22  | Guests who open a product page directly all share **one cart** (empty guest id). Found by the first automated run, which saw 121–134 other people's items                                                                                                          | CRT-049          |
-| PD-23  | Double-clicking **Log in** sends two login requests                                                                                                                                                                                                                | LGN-019          |
-| PD-24  | Double-clicking **Purchase** submits the order twice                                                                                                                                                                                                               | CRT-043          |
-| PD-25  | **No lockout or rate limit:** 10 wrong passwords in a row are all answered with "Wrong password.", so passwords can be brute-forced                                                                                                                                | LGN-018          |
-| PD-26  | Spaces around the username are not trimmed (requirement to confirm)                                                                                                                                                                                                | LGN-012          |
-| PD-27  | Username is case-sensitive (requirement to confirm)                                                                                                                                                                                                                | LGN-013          |
-| PD-28  | Pressing **OK** on the order confirmation before the site's cart-clear call finishes cancels that call: the bought items **stay in the cart**. Found when CRT-026 failed on Chromium and Firefox. The bug is in the site's code, so its test runs on Chromium only | CRT-050          |
+| PD-17  | Auth token is Base64 of username + number, so it is predictable                                                                                                                                                                                                    | LGN-026          |
+| PD-18  | API returns HTTP 200 for errors (should be 401/404)                                                                                                                                                                                                                | LGN-034, CRT-048 |
+| PD-21  | Guests who open a product page directly all share **one cart** (empty guest id). Found by the first automated run, which saw 121–134 other people's items                                                                                                          | CRT-049          |
+| PD-22  | Double-clicking **Log in** sends two login requests                                                                                                                                                                                                                | LGN-019          |
+| PD-23  | Double-clicking **Purchase** submits the order twice                                                                                                                                                                                                               | CRT-043          |
+| PD-24  | **No lockout or rate limit:** 10 wrong passwords in a row are all answered with "Wrong password.", so passwords can be brute-forced                                                                                                                                | LGN-018          |
+| PD-25  | Spaces around the username are not trimmed (requirement to confirm)                                                                                                                                                                                                | LGN-012          |
+| PD-26  | Username is case-sensitive (requirement to confirm)                                                                                                                                                                                                                | LGN-013          |
+| PD-27  | Pressing **OK** on the order confirmation before the site's cart-clear call finishes cancels that call: the bought items **stay in the cart**. Found when CRT-026 failed on Chromium and Firefox. The bug is in the site's code, so its test runs on Chromium only | CRT-050          |
