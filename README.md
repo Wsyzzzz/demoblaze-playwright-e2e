@@ -139,6 +139,7 @@ demoblaze-playwright-e2e/
 ├── src/                          # Framework code – no test cases here
 │   ├── config/env.ts             # Typed, validated configuration (environments + overrides)
 │   ├── config/reports.ts         # One HTML report per run; old ones pruned by global-setup.ts
+│   ├── config/health-check.ts    # Is DemoBlaze up? Checked once before every run
 │   ├── api/DemoblazeApi.ts       # API client: used by API tests and for fast test setup
 │   ├── api/ApiCallLog.ts         # Request/response history for the report (secrets masked)
 │   ├── pages/                    # Page Object Model
@@ -391,6 +392,9 @@ All settings have working defaults in `src/config/env.ts`, so **no `.env` file i
 | `TIMEZONE`                      | `Asia/Kuala_Lumpur` | Browser timezone (used by the order-date check)                    |
 | `CART_PAGE_BUDGET_MS`           | `3000`              | Performance budget for CRT-019 (median of 3 cold loads)            |
 | `REPORT_HISTORY`                | `10`                | How many local HTML reports to keep (one per run)                  |
+| `SKIP_HEALTH_CHECK`             | —                   | Set to `1` to start the run even if DemoBlaze looks down           |
+
+**Health check before every run.** DemoBlaze is a shared public demo, and its API sometimes slows down or disappears for a few minutes (on 20-Oct-2026 its replies went from about 0.3 s to 8–12 s, then `api.demoblaze.com` stopped resolving). A run during such an outage fails dozens of tests for reasons that have nothing to do with the tests. So `global-setup.ts` first checks that the website and the API answer within 5 s (3 attempts each); if not, the run stops straight away with a message saying which one is down. An outage that starts in the middle of a run cannot be caught this way: if many tests suddenly time out on API calls, rerun once the site is back before treating them as defects.
 
 Retries (1 on CI, 0 locally), timeouts and workers are set in `playwright.config.ts`. Retries are never used to hide a known problem: a rare Firefox start-up race ([microsoft/playwright#43413](https://github.com/microsoft/playwright/issues/43413)) is fixed at its source by opening and closing one warm-up window per Firefox worker (`browser` fixture in `src/fixtures/index.ts`).
 

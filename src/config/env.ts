@@ -60,6 +60,8 @@ export const env = {
   validPassword: process.env.VALID_PASSWORD ?? '',
   /** Local runs keep this many HTML reports (one per run) in reports/html/. */
   reportHistory: readNumber('REPORT_HISTORY', 10),
+  /** Check that the site and API respond before starting the run (SKIP_HEALTH_CHECK=1 turns it off). */
+  healthCheck: process.env.SKIP_HEALTH_CHECK !== '1',
   perf: {
     cartPageBudgetMs: readNumber('CART_PAGE_BUDGET_MS', 3000),
   },
